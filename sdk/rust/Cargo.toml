@@ -17,7 +17,7 @@ exporter = []
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
-toml = { version = "0.9", default-features = false, features = ["parse", "serde"] }
+toml = { version = "1.1", default-features = false, features = ["parse", "serde"] }
 wit-bindgen = "0.63"
 
 # Mirrors [workspace.lints] in the root Cargo.toml; keep the two in sync.

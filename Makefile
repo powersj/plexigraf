@@ -3,12 +3,22 @@
 #   make            build tern and all three example plugins
 #   make demo       run all three plugins once through one pipeline
 #   make test       run the core's unit and integration tests
+#   make lint       formatting, clippy, docs, dependency checks; run before every commit
+#   make fmt        reformat every Rust crate in place
+#   make coverage   test coverage report, opened in a browser
+#   make setup      install the lint tools and the git pre-commit hook
 
 PLUGINS := examples/plugins
 WIT     := $(CURDIR)/wit
 COMPONENTIZE_PY := uvx componentize-py==0.25.1
 
-.PHONY: all tern plugins rust go python demo test clean
+# Rust crates outside the workspace: they build for wasm32-wasip2. The SDK is
+# linted once per world, since each feature compiles different code.
+WASM_CRATES := examples/random-rust crates/tern/tests/plugins/chaos crates/tern/tests/plugins/rename crates/tern/tests/plugins/sink
+SDK_FEATURES := scraper processor exporter
+LINT_TOOLS := cargo-nextest cargo-llvm-cov cargo-deny cargo-machete cargo-insta
+
+.PHONY: all tern plugins rust go python demo test lint fmt fmt-check clippy doc deny machete coverage setup clean
 
 all: tern plugins
 
@@ -39,7 +49,49 @@ demo: all
 	./target/release/tern once --config examples/random-all.toml
 
 test:
-	cargo test -p tern
+	cargo nextest run -p tern
+
+lint: fmt-check clippy doc deny machete
+
+fmt:
+	cargo fmt --all
+	cargo fmt --manifest-path sdk/rust/Cargo.toml
+	for c in $(WASM_CRATES); do cargo fmt --manifest-path $$c/Cargo.toml || exit 1; done
+
+fmt-check:
+	cargo fmt --all --check
+	cargo fmt --manifest-path sdk/rust/Cargo.toml --check
+	for c in $(WASM_CRATES); do cargo fmt --manifest-path $$c/Cargo.toml --check || exit 1; done
+
+clippy:
+	cargo clippy --workspace --all-targets -- -D warnings
+	for f in $(SDK_FEATURES); do \
+		cargo clippy --manifest-path sdk/rust/Cargo.toml --target wasm32-wasip2 --all-targets --features $$f -- -D warnings || exit 1; \
+	done
+	for c in $(WASM_CRATES); do \
+		cargo clippy --manifest-path $$c/Cargo.toml --target wasm32-wasip2 --all-targets -- -D warnings || exit 1; \
+	done
+
+# Warnings in doc comments, such as broken links, fail the build.
+doc:
+	RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
+	RUSTDOCFLAGS="-D warnings" cargo doc --manifest-path sdk/rust/Cargo.toml --target wasm32-wasip2 --features scraper --no-deps
+
+deny:
+	cargo deny check
+	cargo deny --manifest-path sdk/rust/Cargo.toml check
+
+machete:
+	cargo machete
+
+coverage:
+	cargo llvm-cov nextest -p tern --html --open
+
+setup:
+	rustup target add wasm32-wasip2
+	rustup component add clippy rustfmt llvm-tools-preview
+	cargo install --locked $(LINT_TOOLS)
+	git config core.hooksPath .githooks
 
 clean:
 	cargo clean

@@ -17,5 +17,19 @@ lto = true
 strip = true
 codegen-units = 1
 
+# Mirrors [workspace.lints] in the root Cargo.toml; keep the two in sync.
+[lints.rust]
+missing_docs = "warn"
+unsafe_code = "forbid"
+unused_qualifications = "warn"
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+items_after_statements = "allow"
+too_many_lines = "allow"
+
+[lints.rustdoc]
+broken_intra_doc_links = "deny"
+
 # A standalone workspace: this crate builds for wasm32-wasip2, not the host.
 [workspace]

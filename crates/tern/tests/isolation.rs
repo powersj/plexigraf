@@ -6,6 +6,7 @@
 //! need that Rust target (`rustup target add wasm32-wasip2`). Without it the
 //! tests are skipped.
 
+use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -78,9 +79,10 @@ fn misbehaving_plugins_are_isolated() {
         wasm.display()
     );
     for mode in ["ok", "spin", "trap", "oom", "error", "fatal", "leak", "bad_index"] {
-        config.push_str(&format!(
+        let _ = write!(
+            config,
             "\n[receivers.chaos_{mode}]\nplugin = \"chaos\"\nmode = \"{mode}\"\ntimeout = \"300ms\"\n"
-        ));
+        );
     }
     // Bad settings fail at start, before any scrape.
     config.push_str("\n[receivers.chaos_noconfig]\nplugin = \"chaos\"\n");

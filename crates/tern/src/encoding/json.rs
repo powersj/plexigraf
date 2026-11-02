@@ -1,6 +1,8 @@
-//! OTLP JSON: the full internal model as an ExportMetricsServiceRequest, one
+//! OTLP JSON: the full internal model as an `ExportMetricsServiceRequest`, one
 //! object per batch. 64-bit integers are strings, as the OTLP JSON mapping
 //! requires.
+
+use std::fmt::Write as _;
 
 use serde::Deserialize;
 use serde_json::{Map, Value, json};
@@ -18,27 +20,28 @@ pub struct EncodeOptions {
     pretty: bool,
 }
 
-pub fn encode(opts: EncodeOptions, batch: &BatchData) -> Result<Vec<u8>, String> {
+/// A scope index and the JSON metrics recorded under it.
+type ScopeMetrics = (u32, Vec<Value>);
+
+pub fn encode(opts: &EncodeOptions, batch: &BatchData) -> Result<Vec<u8>, String> {
     if batch.metrics.is_empty() {
         return Ok(Vec::new());
     }
     // Group metrics by resource, then scope, keeping first-seen order.
-    let mut resource_metrics: Vec<(u32, Vec<(u32, Vec<Value>)>)> = Vec::new();
+    let mut resource_metrics: Vec<(u32, Vec<ScopeMetrics>)> = Vec::new();
     for m in &batch.metrics {
-        let ri = match resource_metrics.iter().position(|(r, _)| *r == m.resource) {
-            Some(i) => i,
-            None => {
-                resource_metrics.push((m.resource, Vec::new()));
-                resource_metrics.len() - 1
-            }
+        let ri = if let Some(i) = resource_metrics.iter().position(|(r, _)| *r == m.resource) {
+            i
+        } else {
+            resource_metrics.push((m.resource, Vec::new()));
+            resource_metrics.len() - 1
         };
         let scopes = &mut resource_metrics[ri].1;
-        let si = match scopes.iter().position(|(s, _)| *s == m.scope) {
-            Some(i) => i,
-            None => {
-                scopes.push((m.scope, Vec::new()));
-                scopes.len() - 1
-            }
+        let si = if let Some(i) = scopes.iter().position(|(s, _)| *s == m.scope) {
+            i
+        } else {
+            scopes.push((m.scope, Vec::new()));
+            scopes.len() - 1
         };
         let mut obj = Map::new();
         obj.insert("name".into(), json!(m.name));
@@ -219,7 +222,10 @@ fn number(n: &Number) -> (&'static str, Value) {
 }
 
 fn hex(b: &[u8]) -> String {
-    b.iter().map(|x| format!("{x:02x}")).collect()
+    b.iter().fold(String::with_capacity(b.len() * 2), |mut s, x| {
+        let _ = write!(s, "{x:02x}");
+        s
+    })
 }
 
 fn exemplars(o: &mut Map<String, Value>, ex: &[Exemplar]) {
@@ -303,8 +309,8 @@ mod tests {
                 },
                 kv_str("cpu.mode", mode),
             ],
-            start_time_unix_nano: 1761868800000000000,
-            time_unix_nano: 1761955200000000000,
+            start_time_unix_nano: 1_761_868_800_000_000_000,
+            time_unix_nano: 1_761_955_200_000_000_000,
             value: Number::Double(v),
             exemplars: vec![],
             flags: DataPointFlags::empty(),
@@ -332,7 +338,7 @@ mod tests {
                 metadata: vec![],
             }],
         };
-        let out: Value = serde_json::from_slice(&encode(EncodeOptions::default(), &b).unwrap()).unwrap();
+        let out: Value = serde_json::from_slice(&encode(&EncodeOptions::default(), &b).unwrap()).unwrap();
         let expected: Value = serde_json::from_str(
             r#"{
           "resourceMetrics": [{

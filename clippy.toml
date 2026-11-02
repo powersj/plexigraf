@@ -1,0 +1,2 @@
+# Proper nouns that the `doc_markdown` lint would otherwise want in backticks.
+doc-valid-idents = ["OTel", "OTLP", "InfluxDB", "WebAssembly", ".."]

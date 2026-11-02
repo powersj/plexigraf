@@ -1,3 +1,5 @@
+//! A processor for the integration tests: prefixes metric names and drops some.
+
 use serde::Deserialize;
 use tern_sdk::{Batch, Metric, PluginError, Processor, Timestamp, export_processor};
 
@@ -22,7 +24,7 @@ impl Processor for Rename {
             m.name = format!("{}{}", self.prefix, m.name);
             batch.set(i, m);
         }
-        self.seen += batch.len() as i64;
+        self.seen += i64::try_from(batch.len()).unwrap_or(i64::MAX);
         Ok(batch)
     }
 

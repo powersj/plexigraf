@@ -1,0 +1,8 @@
+#!/bin/sh
+# Block commits that fail `make lint`. Enabled by `make setup`, which sets
+# core.hooksPath to this directory. Bypass only in an emergency with
+# `git commit --no-verify`; CI runs the same check.
+if ! make lint >/dev/null 2>&1; then
+    echo "pre-commit: make lint failed. Run it to see the errors; \`make fmt\` fixes formatting." >&2
+    exit 1
+fi

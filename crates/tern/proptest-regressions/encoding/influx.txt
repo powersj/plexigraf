@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 12f820e978df15f64e65a17b817eb238cb8fff9eadc652cf86c90cfa9f1677c5 # shrinks to measurement = "a", tag_key = "a", tag_value = "\\", value = Number::Int(0)

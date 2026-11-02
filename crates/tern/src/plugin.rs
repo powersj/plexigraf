@@ -7,6 +7,7 @@
 //! overruns is interrupted, and a trapped instance is rebuilt with backoff.
 
 use std::collections::BTreeMap;
+use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -220,12 +221,16 @@ impl Plugin {
         let mib = memory_limit_mib
             .or(manifest.memory_limit_mib)
             .unwrap_or(DEFAULT_MEMORY_MIB);
+        let memory_limit = usize::try_from(mib)
+            .ok()
+            .and_then(|m| m.checked_mul(1 << 20))
+            .ok_or_else(|| anyhow!("plugin {name}: memory limit of {mib} MiB is too large"))?;
         Ok(Plugin {
             name: manifest.name.clone().unwrap_or_else(|| name.to_string()),
             version: manifest.version.clone().unwrap_or_default(),
             manifest,
             world,
-            memory_limit: (mib as usize) << 20,
+            memory_limit,
             pre,
             host: host.clone(),
         })
@@ -293,13 +298,13 @@ impl metrics::HostBatch for PluginState {
     fn add_resource(&mut self, b: Resource<BatchData>, r: OtelResource) -> wasmtime::Result<u32> {
         let b = self.batch_mut(&b)?;
         b.resources.push(r);
-        Ok(b.resources.len() as u32 - 1)
+        Ok(u32::try_from(b.resources.len() - 1)?)
     }
 
     fn add_scope(&mut self, b: Resource<BatchData>, s: InstrumentationScope) -> wasmtime::Result<u32> {
         let b = self.batch_mut(&b)?;
         b.scopes.push(s);
-        Ok(b.scopes.len() as u32 - 1)
+        Ok(u32::try_from(b.scopes.len() - 1)?)
     }
 
     fn resource_at(&mut self, b: Resource<BatchData>, index: u32) -> wasmtime::Result<OtelResource> {
@@ -319,7 +324,7 @@ impl metrics::HostBatch for PluginState {
     }
 
     fn len(&mut self, b: Resource<BatchData>) -> wasmtime::Result<u32> {
-        Ok(self.batch(&b)?.metrics.len() as u32)
+        Ok(u32::try_from(self.batch(&b)?.metrics.len())?)
     }
 
     fn get(&mut self, b: Resource<BatchData>, index: u32) -> wasmtime::Result<Metric> {
@@ -380,7 +385,7 @@ impl host::Host for PluginState {
     fn log(&mut self, level: host::Level, msg: String, fields: Vec<host::Kv>) -> wasmtime::Result<()> {
         let mut text = msg;
         for f in fields {
-            text.push_str(&format!(" {}={}", f.key, f.value));
+            let _ = write!(text, " {}={}", f.key, f.value);
         }
         let id = self.id.as_str();
         match level {
@@ -530,7 +535,7 @@ impl Instance {
         };
         std::thread::Builder::new()
             .name(format!("tern-{}", spec.id))
-            .spawn(move || Actor::new(plugin, spec).run(rx, ready_tx))?;
+            .spawn(move || Actor::new(plugin, spec).run(&rx, ready_tx))?;
         match ready_rx.await {
             Ok(Ok(())) => Ok(handle),
             Ok(Err(e)) => Err(anyhow!(e)),
@@ -602,7 +607,9 @@ impl Actor {
     }
 
     fn deadline_ticks(&self) -> u64 {
-        (self.spec.timeout.as_millis() / EPOCH_TICK.as_millis()).max(1) as u64
+        u64::try_from(self.spec.timeout.as_millis() / EPOCH_TICK.as_millis())
+            .unwrap_or(u64::MAX)
+            .max(1)
     }
 
     fn instantiate(&mut self, start: bool) -> Result<Live, String> {
@@ -682,7 +689,7 @@ impl Actor {
         format!("\nplugin stderr:\n{}", tail.trim_end())
     }
 
-    fn run(mut self, rx: std::sync::mpsc::Receiver<Request>, ready: oneshot::Sender<Result<(), String>>) {
+    fn run(mut self, rx: &std::sync::mpsc::Receiver<Request>, ready: oneshot::Sender<Result<(), String>>) {
         match self.instantiate(true) {
             Ok(live) => {
                 self.live = Some(live);
@@ -892,11 +899,11 @@ fn reply_err(req: Request, e: CallError) {
     }
 }
 
+/// Plugins loaded by name, and the `(name, error)` of each that failed.
+type LoadedPlugins = (BTreeMap<String, Arc<Plugin>>, Vec<(String, String)>);
+
 /// Load every plugin the active components use, once each.
-pub fn load_plugins(
-    host: &Arc<HostEngine>,
-    cfg: &crate::config::Config,
-) -> (BTreeMap<String, Arc<Plugin>>, Vec<(String, String)>) {
+pub fn load_plugins(host: &Arc<HostEngine>, cfg: &crate::config::Config) -> LoadedPlugins {
     let mut out = BTreeMap::new();
     let mut failed = Vec::new();
     for c in cfg.active_components() {

@@ -11,8 +11,8 @@ use crate::model::BatchData;
 /// component's `encoding` table takes, without `format`.
 pub fn encode(format: &str, options: &toml::Table, batch: &BatchData) -> Result<Vec<u8>, String> {
     match format {
-        "influx" => influx::encode(options_into(options)?, batch),
-        "json" => json::encode(options_into(options)?, batch),
+        "influx" => influx::encode(&options_into(options)?, batch),
+        "json" => json::encode(&options_into(options)?, batch),
         "otlp" | "prometheus" => Err(format!("encoding {format:?} is not implemented yet")),
         _ => Err(format!("unknown encoding {format:?} (known: influx, json)")),
     }
@@ -20,7 +20,7 @@ pub fn encode(format: &str, options: &toml::Table, batch: &BatchData) -> Result<
 
 pub fn decode(format: &str, options: &toml::Table, data: &[u8]) -> Result<BatchData, String> {
     match format {
-        "influx" => influx::decode(options_into(options)?, data, now_unix_nano()),
+        "influx" => influx::decode(&options_into(options)?, data, now_unix_nano()),
         "json" | "otlp" | "prometheus" => Err(format!("decoding {format:?} is not implemented yet")),
         _ => Err(format!("unknown encoding {format:?} (known: influx)")),
     }
@@ -42,7 +42,7 @@ fn options_into<T: serde::de::DeserializeOwned>(options: &toml::Table) -> Result
 fn now_unix_nano() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_nanos() as u64)
+        .map(|d| u64::try_from(d.as_nanos()).unwrap_or(u64::MAX))
         .unwrap_or_default()
 }
 

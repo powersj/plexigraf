@@ -1,0 +1,6 @@
+---
+source: crates/tern/src/encoding/influx.rs
+expression: "text(&EncodeOptions::default(), &b)"
+---
+http.duration,host=web1 count=6i,sum=12.5,min=0.5,0.1=1i,1=3i,+Inf=6i 1761955200000000000
+http.duration,host=web1 count=9223372036854775807i,sum=12.5,min=0.5,1=9223372036854775807i,+Inf=9223372036854775807i 1761955200000000000

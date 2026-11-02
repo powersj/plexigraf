@@ -2,6 +2,7 @@
 //! internal metrics and served in Prometheus text by the telemetry endpoint.
 
 use std::collections::BTreeMap;
+use std::fmt::Write as _;
 use std::sync::{Mutex, OnceLock};
 
 type Key = (&'static str, Vec<(&'static str, String)>);
@@ -40,7 +41,7 @@ pub fn prometheus_text() -> String {
     for ((name, attrs), value) in counters().lock().unwrap().iter() {
         let prom = format!("{}_total", name.replace('.', "_"));
         if *name != last {
-            out.push_str(&format!("# TYPE {prom} counter\n"));
+            let _ = writeln!(out, "# TYPE {prom} counter");
             last = name;
         }
         let labels: Vec<String> = attrs
@@ -54,9 +55,9 @@ pub fn prometheus_text() -> String {
             })
             .collect();
         if labels.is_empty() {
-            out.push_str(&format!("{prom} {value}\n"));
+            let _ = writeln!(out, "{prom} {value}");
         } else {
-            out.push_str(&format!("{prom}{{{}}} {value}\n", labels.join(",")));
+            let _ = writeln!(out, "{prom}{{{}}} {value}", labels.join(","));
         }
     }
     out

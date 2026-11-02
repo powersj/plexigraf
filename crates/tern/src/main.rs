@@ -23,7 +23,7 @@ use crate::plugin::{HostEngine, Plugin, World};
 #[derive(Parser)]
 #[command(name = "tern", version, about = "A pluggable, standards-based metrics agent")]
 struct Cli {
-    /// Log filter, such as `info` or `tern=debug` (also TERN_LOG).
+    /// Log filter, such as `info` or `tern=debug` (also `TERN_LOG`).
     #[arg(long, global = true, env = "TERN_LOG")]
     log: Option<String>,
     #[command(subcommand)]
@@ -118,7 +118,7 @@ fn run(cli: Cli) -> Result<()> {
         }
         Command::Config {
             command: ConfigCommand::Check { config },
-        } => check(config.load()?),
+        } => check(&config.load()?),
         Command::Plugin {
             command: PluginCommand::Inspect { path },
         } => inspect(&path),
@@ -131,10 +131,10 @@ fn log_flow(cfg: &config::Config) {
     }
 }
 
-fn check(cfg: config::Config) -> Result<()> {
+fn check(cfg: &config::Config) -> Result<()> {
     print!("{}", cfg.describe());
     let host = HostEngine::new()?;
-    let (plugins, failed) = plugin::load_plugins(&host, &cfg);
+    let (plugins, failed) = plugin::load_plugins(&host, cfg);
     let mut problems: Vec<String> = failed.into_iter().map(|(n, e)| format!("plugin {n}: {e}")).collect();
     for c in cfg.active_components() {
         let Some(p) = plugins.get(&c.plugin) else { continue };

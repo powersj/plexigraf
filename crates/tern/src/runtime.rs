@@ -137,6 +137,10 @@ impl SendingQueue {
         })
     }
 
+    #[expect(
+        clippy::needless_pass_by_value,
+        reason = "the envelope is consumed: this is where it is dropped"
+    )]
     fn dropped(&self, env: Envelope) {
         let points = env.batch.data_point_count();
         telemetry::component(
@@ -294,8 +298,8 @@ impl ExporterImpl {
                 .encode(batch)
                 .map_err(|e| CallError::Plugin(PluginError::Fatal(e)))?;
             out.write_all(&bytes)
-                .and_then(|_| out.flush())
-                .map(|_| ExportOutcome::Ok)
+                .and_then(|()| out.flush())
+                .map(|()| ExportOutcome::Ok)
                 .map_err(|e| CallError::Plugin(PluginError::Transient(e.to_string())))
         };
         match self {
@@ -340,7 +344,7 @@ async fn export_with_retry(id: &str, imp: &mut ExporterImpl, batch: &Arc<BatchDa
                 tracing::warn!(exporter = id, "batch rejected: {reason}");
                 return Outcome::Failed;
             }
-            Ok(ExportOutcome::Retry(after_ms)) => after_ms.map(|ms| Duration::from_millis(ms as u64)),
+            Ok(ExportOutcome::Retry(after_ms)) => after_ms.map(|ms| Duration::from_millis(u64::from(ms))),
             Err(CallError::Plugin(PluginError::Transient(e))) => {
                 tracing::warn!(exporter = id, "export failed, will retry: {e}");
                 None
@@ -429,7 +433,7 @@ impl PipelineTask {
                     Some(env) => self.handle(env, 0).await,
                     None => break,
                 },
-                _ = tick => self.flush_all().await,
+                () = tick => self.flush_all().await,
             }
         }
         // Close any open aggregation windows before draining.
@@ -466,7 +470,7 @@ impl PipelineTask {
                         },
                         i + 1,
                     ))
-                    .await
+                    .await;
                 }
                 Err(e) => tracing::warn!(pipeline = %self.name, processor = %p.id, "flush failed: {e}"),
             }
@@ -497,11 +501,14 @@ impl PipelineTask {
 // ---- Scrapers ----
 
 fn now_unix_nano(precision: Duration) -> u64 {
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_nanos() as u64;
-    let p = precision.as_nanos() as u64;
+    let now = u64::try_from(
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos(),
+    )
+    .unwrap_or(u64::MAX);
+    let p = u64::try_from(precision.as_nanos()).unwrap_or(u64::MAX);
     if p > 1 { now - now % p } else { now }
 }
 
@@ -524,9 +531,11 @@ impl ScrapeTask {
                 _ = shutdown.changed() => break,
             }
             if !once && !self.jitter.is_zero() {
-                let j = Duration::from_nanos(crate::util::random_u64() % self.jitter.as_nanos().max(1) as u64);
+                let j = Duration::from_nanos(
+                    crate::util::random_u64() % u64::try_from(self.jitter.as_nanos().max(1)).unwrap_or(u64::MAX),
+                );
                 tokio::select! {
-                    _ = tokio::time::sleep(j) => {}
+                    () = tokio::time::sleep(j) => {}
                     _ = shutdown.changed() => break,
                 }
             }
@@ -557,7 +566,7 @@ impl ScrapeTask {
         let tracker = Tracker::new(move |d| match d.status {
             DeliveryStatus::Delivered => tracing::trace!(receiver = %id, points, "batch delivered"),
             DeliveryStatus::Partial => {
-                tracing::debug!(receiver = %id, rejected = d.rejected_data_points, "batch partially delivered")
+                tracing::debug!(receiver = %id, rejected = d.rejected_data_points, "batch partially delivered");
             }
             DeliveryStatus::Failed => tracing::debug!(receiver = %id, points, "batch failed delivery"),
         });
@@ -588,9 +597,9 @@ struct Started {
 }
 
 impl Started {
-    fn fail(&mut self, health: &Health, c: &Component, why: String) {
+    fn fail(&mut self, health: &Health, c: &Component, why: &str) {
         tracing::error!(component = %c.label(), "component failed to start and is isolated: {why}");
-        health.set(&c.label(), Status::PermanentError, Some(why.clone()));
+        health.set(&c.label(), Status::PermanentError, Some(why.to_string()));
         self.failures.push(format!("{}: {why}", c.label()));
     }
 }
@@ -705,7 +714,7 @@ pub async fn run(cfg: Config, mode: Mode, strict: bool) -> Result<()> {
                     health.set(&c.label(), Status::Ok, None);
                 }
             }
-            Err(e) => started.fail(&health, c, e),
+            Err(e) => started.fail(&health, c, &e),
         }
     }
 
@@ -737,7 +746,7 @@ pub async fn run(cfg: Config, mode: Mode, strict: bool) -> Result<()> {
                     processors.push(i);
                 }
                 Err(e) => {
-                    started.fail(&health, c, e);
+                    started.fail(&health, c, &e);
                     ok = false;
                 }
             }
@@ -800,7 +809,7 @@ pub async fn run(cfg: Config, mode: Mode, strict: bool) -> Result<()> {
                     outputs: sources_for(&c.id),
                 });
             }
-            Err(e) => started.fail(&health, c, e),
+            Err(e) => started.fail(&health, c, &e),
         }
     }
 
@@ -846,8 +855,8 @@ pub async fn run(cfg: Config, mode: Mode, strict: bool) -> Result<()> {
         tracing::info!("shutting down; draining pipelines");
         let _ = stop_tx.send(true);
         tokio::select! {
-            _ = async { while scraper_tasks.join_next().await.is_some() {} } => {}
-            _ = wait_for_signal() => std::process::exit(130),
+            () = async { while scraper_tasks.join_next().await.is_some() {} } => {}
+            () = wait_for_signal() => std::process::exit(130),
         }
     }
     drop(stop_tx);
@@ -860,8 +869,8 @@ pub async fn run(cfg: Config, mode: Mode, strict: bool) -> Result<()> {
         drain.await;
     } else {
         tokio::select! {
-            _ = drain => {}
-            _ = wait_for_signal() => std::process::exit(130),
+            () = drain => {}
+            () = wait_for_signal() => std::process::exit(130),
         }
     }
     for i in &started.instances {
@@ -998,7 +1007,7 @@ mod tests {
                 batch: batch(2),
                 tracker: None,
             })
-            .await
+            .await;
         });
         tokio::time::sleep(Duration::from_millis(20)).await;
         assert!(!pusher.is_finished(), "push should block while full");

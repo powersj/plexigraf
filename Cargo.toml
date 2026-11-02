@@ -8,3 +8,19 @@ exclude = ["examples", "sdk/rust"]
 version = "0.1.0"
 edition = "2024"
 license = "Apache-2.0"
+
+# Lint levels shared by every workspace crate (opted in with `[lints] workspace = true`).
+# The guest crates outside the workspace copy this table; keep them in sync.
+[workspace.lints.rust]
+missing_docs = "warn"
+unsafe_code = "forbid"
+unused_qualifications = "warn"
+
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+# Pedantic lints that cost more churn than they return here.
+items_after_statements = "allow" # helper types next to the code that uses them are fine
+too_many_lines = "allow"         # long orchestration functions are split by judgment, not by count
+
+[workspace.lints.rustdoc]
+broken_intra_doc_links = "deny"

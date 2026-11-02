@@ -8,6 +8,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
+use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -742,7 +743,9 @@ fn build_pipeline(name: &str, entry: Entry, components: &BTreeMap<(Kind, String)
                         "receiver pattern {s:?} matches nothing; use {{ match = {s:?}, allow_no_match = true }} if that is expected"
                     )));
                 }
-                found.iter().for_each(|c| add(&c.id));
+                for c in &found {
+                    add(&c.id);
+                }
             }
             ReceiverEntry::Id(s) => {
                 if !sources.iter().any(|c| c.id == s) {
@@ -770,7 +773,9 @@ fn build_pipeline(name: &str, entry: Entry, components: &BTreeMap<(Kind, String)
                         "a receiver selector matches nothing; set allow_no_match = true if that is expected".into(),
                     ));
                 }
-                found.iter().for_each(|c| add(&c.id));
+                for c in &found {
+                    add(&c.id);
+                }
             }
         }
     }
@@ -958,16 +963,17 @@ impl Config {
     pub fn describe(&self) -> String {
         let mut out = String::new();
         for p in &self.pipelines {
-            out.push_str(&format!(
-                "pipeline metrics/{}: [{}] -> [{}] -> [{}]\n",
+            let _ = writeln!(
+                out,
+                "pipeline metrics/{}: [{}] -> [{}] -> [{}]",
                 p.name,
                 p.receivers.join(", "),
                 p.processors.join(", "),
                 p.exporters.join(", ")
-            ));
+            );
         }
         for c in self.unused_components() {
-            out.push_str(&format!("unused: {} is in no pipeline and will not start\n", c.label()));
+            let _ = writeln!(out, "unused: {} is in no pipeline and will not start", c.label());
         }
         out
     }

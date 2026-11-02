@@ -7,6 +7,7 @@
 //! `<measurement>.<field>`.
 
 use std::collections::HashMap;
+use std::fmt::Write as _;
 
 use serde::Deserialize;
 
@@ -57,7 +58,8 @@ struct Line {
     time: u64,
 }
 
-pub fn encode(opts: EncodeOptions, batch: &BatchData) -> Result<Vec<u8>, String> {
+#[expect(clippy::unnecessary_wraps, reason = "matches the signature of the other encoders")]
+pub fn encode(opts: &EncodeOptions, batch: &BatchData) -> Result<Vec<u8>, String> {
     let mut lines = Vec::new();
     for m in &batch.metrics {
         let resource_attrs = batch
@@ -88,6 +90,11 @@ fn tags_for(point_attrs: &[KeyValue], resource_attrs: &[KeyValue]) -> Vec<(Strin
     // A point attribute wins over a resource attribute with the same key.
     tags.dedup_by(|a, b| a.0 == b.0);
     tags
+}
+
+/// A count as an integer field, clamped because line protocol integers are signed.
+fn count(n: u64) -> Field {
+    Field::Int(i64::try_from(n).unwrap_or(i64::MAX))
 }
 
 fn number_field(n: &Number) -> Option<Field> {
@@ -132,16 +139,16 @@ fn metric_lines(m: &Metric, resource_attrs: &[KeyValue], out: &mut Vec<Line>) {
         Data::Histogram(h) => {
             telemetry::lossy("internal", "influx", "histogram", h.data_points.len() as u64);
             for p in h.data_points.iter().filter(|p| !skip(p.flags)) {
-                let mut fields = vec![("count".to_string(), Field::Int(p.count as i64))];
+                let mut fields = vec![("count".to_string(), count(p.count))];
                 p.sum.inspect(|s| float("sum", *s, &mut fields));
                 p.min.inspect(|v| float("min", *v, &mut fields));
                 p.max.inspect(|v| float("max", *v, &mut fields));
                 // Cumulative buckets, keyed by upper bound, as Telegraf writes them.
                 let mut acc = 0u64;
                 for (i, c) in p.bucket_counts.iter().enumerate() {
-                    acc += c;
-                    let le = p.explicit_bounds.get(i).map_or("+Inf".to_string(), |b| b.to_string());
-                    fields.push((le, Field::Int(acc as i64)));
+                    acc = acc.saturating_add(*c);
+                    let le = p.explicit_bounds.get(i).map_or("+Inf".to_string(), ToString::to_string);
+                    fields.push((le, count(acc)));
                 }
                 push(&p.attributes, p.time_unix_nano, fields);
             }
@@ -155,8 +162,8 @@ fn metric_lines(m: &Metric, resource_attrs: &[KeyValue], out: &mut Vec<Line>) {
             );
             for p in h.data_points.iter().filter(|p| !skip(p.flags)) {
                 let mut fields = vec![
-                    ("count".to_string(), Field::Int(p.count as i64)),
-                    ("zero_count".to_string(), Field::Int(p.zero_count as i64)),
+                    ("count".to_string(), count(p.count)),
+                    ("zero_count".to_string(), count(p.zero_count)),
                 ];
                 p.sum.inspect(|s| float("sum", *s, &mut fields));
                 p.min.inspect(|v| float("min", *v, &mut fields));
@@ -166,7 +173,7 @@ fn metric_lines(m: &Metric, resource_attrs: &[KeyValue], out: &mut Vec<Line>) {
         }
         Data::Summary(s) => {
             for p in s.data_points.iter().filter(|p| !skip(p.flags)) {
-                let mut fields = vec![("count".to_string(), Field::Int(p.count as i64))];
+                let mut fields = vec![("count".to_string(), count(p.count))];
                 float("sum", p.sum, &mut fields);
                 for q in &p.quantile_values {
                     float(&q.quantile.to_string(), q.value, &mut fields);
@@ -177,11 +184,14 @@ fn metric_lines(m: &Metric, resource_attrs: &[KeyValue], out: &mut Vec<Line>) {
     }
 }
 
+/// A regrouped line's identity: measurement, tags, and timestamp.
+type GroupKey = (String, Vec<(String, String)>, u64);
+
 /// Merge single-value lines that share a name prefix, tags, and time.
 /// `random.int` and `random.float` become `random int=..,float=..`.
 fn regroup(lines: Vec<Line>) -> Vec<Line> {
     let mut out: Vec<Line> = Vec::new();
-    let mut index: HashMap<(String, Vec<(String, String)>, u64), usize> = HashMap::new();
+    let mut index: HashMap<GroupKey, usize> = HashMap::new();
     for line in lines {
         let single = line.fields.len() == 1 && line.fields[0].0 == "value";
         let Some((prefix, field)) = line.measurement.rsplit_once('.').filter(|_| single) else {
@@ -208,9 +218,11 @@ fn regroup(lines: Vec<Line>) -> Vec<Line> {
     out
 }
 
+/// Backslash-escape `chars` and backslash itself; an unescaped trailing
+/// backslash would otherwise escape the separator that follows it.
 fn escape(s: &str, chars: &[char], out: &mut String) {
     for c in s.chars() {
-        if chars.contains(&c) {
+        if c == '\\' || chars.contains(&c) {
             out.push('\\');
         }
         out.push(c);
@@ -233,7 +245,9 @@ fn write_line(out: &mut String, line: &Line) {
         escape(k, &[',', '=', ' '], out);
         out.push('=');
         match v {
-            Field::Int(n) => out.push_str(&format!("{n}i")),
+            Field::Int(n) => {
+                let _ = write!(out, "{n}i");
+            }
             Field::Float(f) => out.push_str(&f.to_string()),
         }
     }
@@ -255,7 +269,7 @@ enum RawField {
     Str(String),
 }
 
-pub fn decode(opts: DecodeOptions, data: &[u8], now: u64) -> Result<BatchData, String> {
+pub fn decode(opts: &DecodeOptions, data: &[u8], now: u64) -> Result<BatchData, String> {
     let text = std::str::from_utf8(data).map_err(|_| "line protocol must be UTF-8".to_string())?;
     let mut batch = BatchData {
         resources: vec![empty_resource()],
@@ -283,9 +297,13 @@ pub fn decode(opts: DecodeOptions, data: &[u8], now: u64) -> Result<BatchData, S
             let mut point_attrs = attrs.clone();
             let value = match value {
                 RawField::Int(i) => Number::Int(i),
+                #[expect(
+                    clippy::cast_precision_loss,
+                    reason = "values past i64::MAX fall back to the nearest double"
+                )]
                 RawField::Uint(u) => i64::try_from(u).map_or(Number::Double(u as f64), Number::Int),
                 RawField::Float(f) => Number::Double(f),
-                RawField::Bool(b) => Number::Int(b as i64),
+                RawField::Bool(b) => Number::Int(i64::from(b)),
                 RawField::Str(s) => match opts.string_values {
                     StringValues::Info => {
                         point_attrs.push(kv_str("value", &s));
@@ -435,7 +453,7 @@ impl Cursor<'_> {
     }
 
     /// Read up to an unescaped stop character. Backslash escapes are removed
-    /// unless `quoted` is set, where the raw text is kept for parse_field and
+    /// unless `quoted` is set, where the raw text is kept for `parse_field` and
     /// stop characters inside double quotes are ignored.
     fn until(&mut self, stops: &[char], quoted: bool) -> String {
         let mut out = Vec::new();
@@ -501,11 +519,11 @@ mod tests {
         }
     }
 
-    fn text(opts: EncodeOptions, b: &BatchData) -> String {
+    fn text(opts: &EncodeOptions, b: &BatchData) -> String {
         String::from_utf8(encode(opts, b).unwrap()).unwrap()
     }
 
-    const T: u64 = 1761955200000000000;
+    const T: u64 = 1_761_955_200_000_000_000;
 
     #[test]
     fn encodes_one_line_per_metric_as_in_the_design() {
@@ -515,13 +533,13 @@ mod tests {
             gauge("random.float", Number::Double(0.4213), attrs, T),
         ]);
         assert_eq!(
-            text(EncodeOptions::default(), &b),
+            text(&EncodeOptions::default(), &b),
             "random.int,source=tern value=17i 1761955200000000000\n\
              random.float,source=tern value=0.4213 1761955200000000000\n"
         );
         assert_eq!(
             text(
-                EncodeOptions {
+                &EncodeOptions {
                     multi_field_lines: true
                 },
                 &b
@@ -540,7 +558,7 @@ mod tests {
         )]);
         b.resources[0].attributes.push(kv_str("host.name", "web1"));
         assert_eq!(
-            text(EncodeOptions::default(), &b),
+            text(&EncodeOptions::default(), &b),
             "system.cpu.time,cpu.mode=user,host.name=web1 value=1.5 1761955200000000000\n"
         );
     }
@@ -549,8 +567,19 @@ mod tests {
     fn escapes_special_characters() {
         let b = batch(vec![gauge("a b,c", Number::Int(1), vec![kv_str("k=1", "v 2,x")], T)]);
         assert_eq!(
-            text(EncodeOptions::default(), &b),
+            text(&EncodeOptions::default(), &b),
             "a\\ b\\,c,k\\=1=v\\ 2\\,x value=1i 1761955200000000000\n"
+        );
+    }
+
+    #[test]
+    fn escapes_backslashes() {
+        // Found by the property test below: `host=web\` used to come out as
+        // `host=web\ value=..`, where the backslash escaped the space.
+        let b = batch(vec![gauge("a", Number::Int(1), vec![kv_str("host", "web\\")], T)]);
+        assert_eq!(
+            text(&EncodeOptions::default(), &b),
+            "a,host=web\\\\ value=1i 1761955200000000000\n"
         );
     }
 
@@ -561,7 +590,7 @@ mod tests {
             counter_fields: vec!["accepts".into()],
             string_values: StringValues::Info,
         };
-        let b = decode(opts, line, 0).unwrap();
+        let b = decode(&opts, line, 0).unwrap();
         let names: Vec<_> = b.metrics.iter().map(|m| m.name.as_str()).collect();
         assert_eq!(names, ["nginx.active", "nginx.accepts", "nginx.status"]);
         assert!(matches!(&b.metrics[0].data, Data::Gauge(_)));
@@ -571,11 +600,11 @@ mod tests {
         assert_eq!(g.data_points[0].attributes.len(), 2);
 
         // Written back out with multi_field_lines, the numeric fields regroup.
-        let mut b = decode(DecodeOptions::default(), line, 0).unwrap();
+        let mut b = decode(&DecodeOptions::default(), line, 0).unwrap();
         b.normalize("test", "");
         assert_eq!(
             text(
-                EncodeOptions {
+                &EncodeOptions {
                     multi_field_lines: true
                 },
                 &b
@@ -588,10 +617,10 @@ mod tests {
     fn round_trips_line_protocol() {
         let input = "cpu,host=a\\ b,region=us usage=0.5,idle=99i 1700000000000000000\n\
                      mem,host=a used=1024i 1700000000000000000\n";
-        let mut b = decode(DecodeOptions::default(), input.as_bytes(), 0).unwrap();
+        let mut b = decode(&DecodeOptions::default(), input.as_bytes(), 0).unwrap();
         b.normalize("test", "");
         let out = text(
-            EncodeOptions {
+            &EncodeOptions {
                 multi_field_lines: true,
             },
             &b,
@@ -601,16 +630,16 @@ mod tests {
 
     #[test]
     fn rejects_bad_lines() {
-        assert!(decode(DecodeOptions::default(), b"cpu", 0).is_err());
-        assert!(decode(DecodeOptions::default(), b"cpu value=", 0).is_err());
-        assert!(decode(DecodeOptions::default(), b"cpu value=1 abc", 0).is_err());
-        assert!(decode(DecodeOptions::default(), b"cpu,host value=1", 0).is_err());
+        assert!(decode(&DecodeOptions::default(), b"cpu", 0).is_err());
+        assert!(decode(&DecodeOptions::default(), b"cpu value=", 0).is_err());
+        assert!(decode(&DecodeOptions::default(), b"cpu value=1 abc", 0).is_err());
+        assert!(decode(&DecodeOptions::default(), b"cpu,host value=1", 0).is_err());
     }
 
     #[test]
     fn defaults_timestamp_and_handles_quoted_spaces() {
         let b = decode(
-            DecodeOptions {
+            &DecodeOptions {
                 string_values: StringValues::Attribute,
                 ..Default::default()
             },
@@ -625,5 +654,79 @@ mod tests {
             any_value_to_string(&g.data_points[0].attributes[0].value),
             "hello, world"
         );
+    }
+
+    fn histogram(count: u64, bucket_counts: Vec<u64>, explicit_bounds: Vec<f64>) -> Metric {
+        use crate::bindings::metrics::{Histogram, HistogramDataPoint};
+        Metric {
+            data: Data::Histogram(Histogram {
+                data_points: vec![HistogramDataPoint {
+                    attributes: vec![kv_str("host", "web1")],
+                    start_time_unix_nano: 0,
+                    time_unix_nano: T,
+                    count,
+                    sum: Some(12.5),
+                    bucket_counts,
+                    explicit_bounds,
+                    exemplars: vec![],
+                    flags: DataPointFlags::empty(),
+                    min: Some(0.5),
+                    max: None,
+                }],
+                aggregation_temporality: AggregationTemporality::Cumulative,
+            }),
+            ..gauge("http.duration", Number::Int(0), vec![], T)
+        }
+    }
+
+    // Snapshot test: the expected output lives in snapshots/*.snap. When the
+    // output changes on purpose, run `cargo insta review` to accept it.
+    #[test]
+    fn histograms_become_cumulative_bucket_fields() {
+        let b = batch(vec![
+            histogram(6, vec![1, 2, 3], vec![0.1, 1.0]),
+            // Counts past i64::MAX clamp instead of wrapping negative.
+            histogram(u64::MAX, vec![u64::MAX, 1], vec![1.0]),
+        ]);
+        insta::assert_snapshot!(text(&EncodeOptions::default(), &b));
+    }
+
+    // Property test: proptest generates hundreds of random metrics, including
+    // names and tags full of characters that need escaping, and checks that
+    // everything the encoder writes decodes back to the same data. On failure
+    // it shrinks the input to the smallest one that still fails.
+    use proptest::prelude::*;
+
+    proptest! {
+        #[test]
+        fn encoded_lines_decode_to_the_same_metric(
+            measurement in "[a-z][a-z_.]{0,15}",
+            tag_key in "[a-z][a-z_.]{0,7}",
+            tag_value in "\\PC{1,12}",
+            value in prop_oneof![
+                any::<i64>().prop_map(Number::Int),
+                proptest::num::f64::NORMAL.prop_map(Number::Double),
+            ],
+        ) {
+            let b = batch(vec![gauge(&measurement, value, vec![kv_str(&tag_key, &tag_value)], T)]);
+            let encoded = encode(&EncodeOptions::default(), &b).unwrap();
+            let decoded = decode(&DecodeOptions::default(), &encoded, 0)
+                .map_err(|e| TestCaseError::fail(format!("{e}: {}", String::from_utf8_lossy(&encoded))))?;
+
+            prop_assert_eq!(decoded.metrics.len(), 1);
+            let m = &decoded.metrics[0];
+            prop_assert_eq!(&m.name, &format!("{measurement}.value"));
+            let Data::Gauge(g) = &m.data else { panic!("expected a gauge") };
+            let p = &g.data_points[0];
+            prop_assert_eq!(p.time_unix_nano, T);
+            match (&p.value, &value) {
+                (Number::Int(got), Number::Int(want)) => prop_assert_eq!(got, want),
+                (Number::Double(got), Number::Double(want)) => prop_assert_eq!(got.to_bits(), want.to_bits()),
+                (got, want) => prop_assert!(false, "decoded {got:?}, encoded {want:?}"),
+            }
+            prop_assert_eq!(p.attributes.len(), 1);
+            prop_assert_eq!(&p.attributes[0].key, &tag_key);
+            prop_assert_eq!(any_value_to_string(&p.attributes[0].value), tag_value);
+        }
     }
 }

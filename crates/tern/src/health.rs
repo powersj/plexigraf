@@ -83,9 +83,9 @@ pub async fn serve(
             let respond = respond.clone();
             tokio::spawn(async move {
                 let mut buf = [0u8; 2048];
-                let n = match tokio::time::timeout(std::time::Duration::from_secs(5), sock.read(&mut buf)).await {
-                    Ok(Ok(n)) => n,
-                    _ => return,
+                let Ok(Ok(n)) = tokio::time::timeout(std::time::Duration::from_secs(5), sock.read(&mut buf)).await
+                else {
+                    return;
                 };
                 let req = String::from_utf8_lossy(&buf[..n]);
                 let path = req.split_whitespace().nth(1).unwrap_or("/");

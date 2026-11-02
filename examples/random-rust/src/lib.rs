@@ -1,3 +1,5 @@
+//! The `random` example scraper: emits random integer and float gauges.
+
 use serde::Deserialize;
 use tern_sdk::{Batch, Metric, PluginError, Scraper, Timestamp, export_scraper};
 

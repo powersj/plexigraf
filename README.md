@@ -43,6 +43,21 @@ tern plugin inspect examples/plugins/random_py.wasm
 | Go plugins | Go 1.27.1 or later. `componentize-go` is a `go tool` dependency of each module and downloads its own binary on first use |
 | Python plugins | [`uv`](https://docs.astral.sh/uv/). The Makefile runs a pinned `componentize-py` through `uvx`, which bundles its own CPython |
 
+## Development
+
+Run `make setup` once after cloning. It installs the lint and test tools and
+enables a git pre-commit hook that runs `make lint`.
+
+```sh
+make lint       # formatting, Clippy, doc warnings, cargo-deny, unused dependencies
+make fmt        # fix formatting
+make test       # unit, property, snapshot, and integration tests
+make coverage   # line coverage report in your browser
+```
+
+Run `make lint` before every commit; the hook and CI both enforce it.
+[AGENTS.md](AGENTS.md) has the lint and test conventions.
+
 ## Layout
 
 | Path | What it is |

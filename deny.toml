@@ -1,0 +1,38 @@
+# cargo-deny: checks dependencies for security advisories, license
+# compatibility, duplicate versions, and untrusted sources. Run `make deny`.
+# Reference: https://embarkstudios.github.io/cargo-deny/
+
+[graph]
+# Plugins and the SDK build for wasm32-wasip2; the agent builds for the host.
+targets = ["aarch64-apple-darwin", "x86_64-unknown-linux-gnu", "aarch64-unknown-linux-gnu", "wasm32-wasip2"]
+
+[advisories]
+# Fail on any crate with a RustSec security advisory, and on yanked versions.
+yanked = "deny"
+
+[licenses]
+# Permissive licenses compatible with shipping tern under Apache-2.0. A crate
+# offered under several licenses (such as r-efi's MIT OR Apache-2.0 OR LGPL)
+# passes when any one of them is listed here.
+allow = [
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "MIT",
+    "Unicode-3.0",
+    "Zlib",
+]
+confidence-threshold = 0.8
+# The SDK's smaller dependency tree does not use every license above.
+unused-allowed-license = "allow"
+
+[bans]
+# Duplicate versions come from wasmtime's tree and are not ours to fix.
+# Set this to "warn" and run `cargo deny check bans` to review them.
+multiple-versions = "allow"
+wildcards = "deny"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

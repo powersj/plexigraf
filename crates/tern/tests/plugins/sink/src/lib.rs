@@ -1,3 +1,5 @@
+//! An exporter for the integration tests that succeeds, rejects, or fails on demand.
+
 use serde::Deserialize;
 use tern_sdk::{Batch, ExportOutcome, Exporter, PartialFailure, PluginError, encoding, export_exporter, log};
 

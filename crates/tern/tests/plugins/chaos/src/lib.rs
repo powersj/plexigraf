@@ -1,9 +1,11 @@
+//! A deliberately misbehaving scraper for the integration tests.
+
 use serde::Deserialize;
 use tern_sdk::{Batch, Metric, PluginError, Scraper, Timestamp, export_scraper};
 
 #[derive(Deserialize)]
 struct Chaos {
-    /// ok, spin, trap, oom, error, fatal, leak, or bad_index.
+    /// `ok`, `spin`, `trap`, `oom`, `error`, `fatal`, `leak`, or `bad_index`.
     mode: String,
     #[serde(skip)]
     calls: u64,
@@ -40,7 +42,11 @@ impl Scraper for Chaos {
             }
             _ => {
                 let mut b = Batch::new();
-                b.push(Metric::gauge("chaos.calls", "1").point(now, self.calls as i64, &[]));
+                b.push(Metric::gauge("chaos.calls", "1").point(
+                    now,
+                    i64::try_from(self.calls).unwrap_or(i64::MAX),
+                    &[],
+                ));
                 Ok(b)
             }
         }

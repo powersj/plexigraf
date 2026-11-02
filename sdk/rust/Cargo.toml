@@ -1,0 +1,20 @@
+[package]
+name = "tern-sdk"
+description = "SDK for writing Tern plugins in Rust"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+
+[features]
+# Pick exactly one: the world the plugin targets.
+scraper = []
+processor = []
+exporter = []
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+toml = { version = "0.9", default-features = false, features = ["parse", "serde"] }
+wit-bindgen = "0.63"
+
+[package.metadata.docs.rs]
+features = ["scraper"]

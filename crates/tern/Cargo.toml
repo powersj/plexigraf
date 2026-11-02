@@ -1,0 +1,18 @@
+[package]
+name = "tern"
+description = "A pluggable, standards-based metrics agent"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive", "env"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+toml = "0.9"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "signal", "net", "io-util"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+wasmtime = { version = "50", default-features = false, features = ["anyhow", "component-model", "cranelift", "parallel-compilation", "runtime", "std"] }
+wasmtime-wasi = "50"

@@ -1,0 +1,44 @@
+# The same scraper written in Rust, Go, and Python, merged into one pipeline.
+# Each receiver uses its own prefix so the output shows where each line came from.
+
+[service.defaults]
+collection_interval = "5s"
+
+[plugins.random_rust]
+source = "file://./plugins/random_rust.wasm"
+
+[plugins.random_go]
+source = "file://./plugins/random_go.wasm"
+
+[plugins.random_py]
+source = "file://./plugins/random_py.wasm"
+
+[receivers.rust]
+plugin = "random_rust"
+prefix = "rust"
+max = 50
+routing_labels = { demo = "random" }
+
+[receivers.go]
+plugin = "random_go"
+prefix = "go"
+max = 50
+routing_labels = { demo = "random" }
+
+[receivers.python]
+plugin = "random_py"
+prefix = "python"
+max = 50
+routing_labels = { demo = "random" }
+
+[exporters.console]
+plugin = "debug"
+encoding = { format = "influx", multi_field_lines = true }
+
+[exporters.archive]
+plugin = "file"
+path = "random-all.jsonl"          # OTLP JSON, one batch per line, next to this file
+
+[pipelines.metrics.demo]
+receivers = [{ routing_labels = { demo = "random" } }]
+exporters = ["console", "archive"]

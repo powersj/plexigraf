@@ -1,0 +1,15 @@
+# A deliberately misbehaving scraper for the integration tests.
+[package]
+name = "tern-test-chaos"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+tern-sdk = { path = "../../../../../sdk/rust", features = ["scraper"] }
+serde = { version = "1", features = ["derive"] }
+
+[workspace]

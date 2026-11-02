@@ -1,0 +1,148 @@
+// Mirrors the OTLP metrics data model (opentelemetry/proto/metrics/v1),
+// using OTLP's own names.
+package tern:metrics@0.1.0;
+
+interface metrics {
+  // OTel AnyValue, including nested arrays and maps. WIT has no recursive
+  // types, so a nested value is a flat list of nodes linked by index.
+  // Children always come after their parent, so a tree can never cycle.
+  variant leaf { empty, str(string), %bool(bool), int(s64), double(f64), bytes(list<u8>) }
+  variant node {
+    leaf(leaf),
+    array(list<u32>),                   // indices of the elements
+    kvlist(list<tuple<string, u32>>),   // key and index of each value
+  }
+  variant any-value {
+    leaf(leaf),                         // the common case: no list at all
+    tree(list<node>),                   // nodes[0] is the root
+  }
+  record key-value { key: string, value: any-value }
+
+  record %resource {
+    attributes: list<key-value>,
+    dropped-attributes-count: u32,
+    schema-url: string,                 // ResourceMetrics.schema_url
+  }
+  record instrumentation-scope {
+    name: string,
+    version: string,
+    attributes: list<key-value>,
+    dropped-attributes-count: u32,
+    schema-url: string,                 // ScopeMetrics.schema_url
+  }
+
+  enum aggregation-temporality { unspecified, delta, cumulative }
+  flags data-point-flags { no-recorded-value }
+  variant number { int(s64), double(f64) }
+
+  record exemplar {
+    filtered-attributes: list<key-value>,
+    time-unix-nano: u64,
+    value: number,
+    trace-id: option<list<u8>>,         // host checks 16 bytes
+    span-id: option<list<u8>>,          // host checks 8 bytes
+  }
+
+  record number-data-point {
+    attributes: list<key-value>,
+    start-time-unix-nano: u64,
+    time-unix-nano: u64,
+    value: number,
+    exemplars: list<exemplar>,
+    %flags: data-point-flags,
+  }
+
+  record histogram-data-point {
+    attributes: list<key-value>,
+    start-time-unix-nano: u64,
+    time-unix-nano: u64,
+    count: u64,
+    sum: option<f64>,
+    bucket-counts: list<u64>,
+    explicit-bounds: list<f64>,
+    exemplars: list<exemplar>,
+    %flags: data-point-flags,
+    min: option<f64>,
+    max: option<f64>,
+  }
+
+  record buckets { offset: s32, bucket-counts: list<u64> }
+  record exponential-histogram-data-point {
+    attributes: list<key-value>,
+    start-time-unix-nano: u64,
+    time-unix-nano: u64,
+    count: u64,
+    sum: option<f64>,
+    scale: s32,
+    zero-count: u64,
+    positive: buckets,
+    negative: buckets,
+    %flags: data-point-flags,
+    exemplars: list<exemplar>,
+    min: option<f64>,
+    max: option<f64>,
+    zero-threshold: f64,
+  }
+
+  record value-at-quantile { quantile: f64, value: f64 }
+  record summary-data-point {
+    attributes: list<key-value>,
+    start-time-unix-nano: u64,
+    time-unix-nano: u64,
+    count: u64,
+    sum: f64,
+    quantile-values: list<value-at-quantile>,
+    %flags: data-point-flags,
+  }
+
+  record gauge { data-points: list<number-data-point> }
+  record sum {
+    data-points: list<number-data-point>,
+    aggregation-temporality: aggregation-temporality,
+    is-monotonic: bool,
+  }
+  record histogram {
+    data-points: list<histogram-data-point>,
+    aggregation-temporality: aggregation-temporality,
+  }
+  record exponential-histogram {
+    data-points: list<exponential-histogram-data-point>,
+    aggregation-temporality: aggregation-temporality,
+  }
+  record summary { data-points: list<summary-data-point> }
+
+  variant data {
+    gauge(gauge),
+    sum(sum),
+    histogram(histogram),
+    exponential-histogram(exponential-histogram),
+    summary(summary),
+  }
+
+  record metric {
+    %resource: u32,               // index into the batch's resource table
+    scope: u32,                   // index into the batch's scope table
+    name: string,
+    description: string,
+    unit: string,                 // UCUM, as in OTel
+    data: data,
+    metadata: list<key-value>,
+  }
+
+  // Host-owned batch. Resources and scopes are stored once and referenced by
+  // index, so editing a metric never copies them. SDKs wrap this as an iterator.
+  resource batch {
+    constructor();
+    add-resource: func(r: %resource) -> u32;
+    add-scope: func(s: instrumentation-scope) -> u32;
+    resource-at: func(index: u32) -> %resource;
+    scope-at: func(index: u32) -> instrumentation-scope;
+    len: func() -> u32;
+    get: func(index: u32) -> metric;
+    set: func(index: u32, m: metric);
+    push: func(m: metric);
+    extend: func(ms: list<metric>);
+    retain: func(keep: list<bool>);     // remove many in one pass, no shifting mid-loop
+    take-all: func() -> list<metric>;
+  }
+}

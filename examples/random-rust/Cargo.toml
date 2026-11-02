@@ -1,0 +1,21 @@
+[package]
+name = "tern-scraper-random"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+tern-sdk = { path = "../../sdk/rust", features = ["scraper"] }
+serde = { version = "1", features = ["derive"] }
+fastrand = "2"
+
+[profile.release]
+opt-level = "s"
+lto = true
+strip = true
+codegen-units = 1
+
+# A standalone workspace: this crate builds for wasm32-wasip2, not the host.
+[workspace]

@@ -1,0 +1,18 @@
+# The design's random.toml: one scraper, one pipeline, printed as line protocol.
+[service.defaults]
+collection_interval = "2s"
+
+[plugins.random]
+source = "file://./plugins/random_rust.wasm"
+
+[receivers.random]
+min = 0
+max = 50
+
+[exporters.console]
+plugin = "debug"                  # built into core; prints to stdout
+encoding = { format = "influx" }
+
+[pipelines.metrics.demo]          # required: nothing flows without a pipeline
+receivers = ["random"]
+exporters = ["console"]

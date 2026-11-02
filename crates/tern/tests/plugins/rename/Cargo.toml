@@ -1,0 +1,15 @@
+# A processor for the integration tests: renames, drops, and counts on flush.
+[package]
+name = "tern-test-rename"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+tern-sdk = { path = "../../../../../sdk/rust", features = ["processor"] }
+serde = { version = "1", features = ["derive"] }
+
+[workspace]

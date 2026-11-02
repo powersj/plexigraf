@@ -1,0 +1,82 @@
+// tern:plugin 0.1 uses synchronous exports (the "sync twins" from the design)
+// so that Rust, Go, and Python guests all target the same worlds today. The
+// push `receiver` world needs async `consume-metrics` and lands with WASI 0.3
+// guest support in every SDK.
+package tern:plugin@0.1.0;
+
+interface types {
+  enum delivery-status { delivered, partial, failed }
+  record delivery { status: delivery-status, rejected-data-points: u64 }
+
+  // Shaped like OTLP ExportPartialSuccess: a count always, indices when known.
+  record partial-failure {
+    rejected-data-points: u64,
+    reason: string,
+    indices: option<list<u32>>,
+  }
+  variant export-outcome { ok, retry(option<u32>), reject(string), partial(partial-failure) }
+
+  variant plugin-error { config(string), transient(string), fatal(string) }
+  enum status { starting, ok, recoverable-error, permanent-error, stopping }
+}
+
+// Services the agent provides to every plugin.
+interface host {
+  use types.{status};
+  enum level { trace, debug, info, warn, error }
+  record kv { key: string, value: string }
+  log: func(level: level, msg: string, fields: list<kv>);
+  secret: func(name: string) -> option<string>;          // only names in the approval
+  state-load: func() -> option<list<u8>>;                // persisted plugin state
+  state-save: func(blob: list<u8>);
+  report-status: func(s: status, detail: option<string>); // like the Collector's component status
+}
+
+// The core's encodings, so plugins never bundle their own.
+interface encoding {
+  use tern:metrics/metrics@0.1.0.{batch};
+  decode: func(format: string, options-toml: string, data: list<u8>) -> result<batch, string>;
+  encode: func(format: string, options-toml: string, b: borrow<batch>) -> result<list<u8>, string>;
+}
+
+// Every world exports this: validate-config, then start(config) and shutdown.
+// The SDKs supply defaults for validate-config, shutdown, and flush.
+//
+// These live in an interface rather than at world level because world-level
+// export names share a namespace with the guest's C symbols: componentize-py
+// fails to link a component whose world exports `shutdown` (or `close`)
+// because libc defines them too. Interface exports are namespaced.
+interface lifecycle {
+  use types.{plugin-error};
+  validate-config: func(config-toml: string) -> result<_, plugin-error>;
+  start: func(config-toml: string) -> result<_, plugin-error>;
+  shutdown: func();
+}
+
+world scraper {
+  use tern:metrics/metrics@0.1.0.{batch};
+  use types.{plugin-error};
+  import host;
+  import encoding;
+  export lifecycle;
+  export scrape: func(now-unix-nano: u64) -> result<batch, plugin-error>;
+}
+
+world processor {
+  use tern:metrics/metrics@0.1.0.{batch};
+  use types.{plugin-error};
+  import host;
+  import encoding;
+  export lifecycle;
+  export process: func(input: batch) -> result<batch, plugin-error>;
+  export flush: func(now-unix-nano: u64) -> result<batch, plugin-error>;   // called only if the manifest declares it
+}
+
+world exporter {
+  use tern:metrics/metrics@0.1.0.{batch};
+  use types.{export-outcome, plugin-error};
+  import host;
+  import encoding;
+  export lifecycle;
+  export %export: func(b: batch) -> result<export-outcome, plugin-error>;
+}

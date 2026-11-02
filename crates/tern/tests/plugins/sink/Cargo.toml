@@ -1,0 +1,15 @@
+# An exporter for the integration tests: encodes with the core and logs it.
+[package]
+name = "tern-test-sink"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+tern-sdk = { path = "../../../../../sdk/rust", features = ["exporter"] }
+serde = { version = "1", features = ["derive"] }
+
+[workspace]

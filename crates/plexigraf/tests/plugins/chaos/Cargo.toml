@@ -1,0 +1,29 @@
+# A deliberately misbehaving scraper for the integration tests.
+[package]
+name = "plexigraf-test-chaos"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+plexigraf-sdk = { path = "../../../../../sdk/rust", features = ["scraper"] }
+serde = { version = "1", features = ["derive"] }
+
+# Mirrors [workspace.lints] in the root Cargo.toml; keep the two in sync.
+[lints.rust]
+missing_docs = "warn"
+unsafe_code = "forbid"
+unused_qualifications = "warn"
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+items_after_statements = "allow"
+too_many_lines = "allow"
+
+[lints.rustdoc]
+broken_intra_doc_links = "deny"
+
+[workspace]

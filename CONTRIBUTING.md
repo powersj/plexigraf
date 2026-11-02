@@ -1,4 +1,4 @@
-# Contributing to Tern
+# Contributing to Plexigraf
 
 ## Set up
 
@@ -14,14 +14,14 @@ the Makefile uses, and the git pre-commit hook.
 2. Start commit subjects with an imperative verb: "Add", "Fix", "Remove",
    "Deprecate", or another verb for changes. The verb picks the CHANGELOG
    section (see `cliff.toml`).
-3. If you change `tern-sdk`'s public API, run `make public-api` and commit the
+3. If you change `plexigraf-sdk`'s public API, run `make public-api` and commit the
    updated `sdk/rust/public-api/*.txt`, so reviewers see the API diff.
 
 [AGENTS.md](AGENTS.md) has the lint and test conventions.
 
 ## Versioning and deprecation
 
-The agent, `tern-sdk`, and the `tern:*` WIT packages each follow
+The agent, `plexigraf-sdk`, and the `plexigraf:*` WIT packages each follow
 [Semantic Versioning](https://semver.org/). Before 1.0, a minor version bump
 (0.x to 0.(x+1)) may break things and a patch bump may not.
 
@@ -32,7 +32,7 @@ upgrade:
   changing a default in a way that changes output.
 - **SDK:** any change `make semver` reports, and raising the SDK's
   `rust-version`.
-- **WIT:** any change to a published `tern:*` package version. Changes go
+- **WIT:** any change to a published `plexigraf:*` package version. Changes go
   into a new package version, and the host keeps supporting the previous one.
 
 Deprecated items keep working for at least one minor release, log a warning
@@ -57,7 +57,7 @@ check, and say in the PR:
 
 - **Need:** whether the standard library or an existing dependency covers it.
 - **Maintenance:** recent releases, and an owner who responds to issues.
-- **Weight:** how many crates it adds (`cargo tree -p tern -i <crate>` after
+- **Weight:** how many crates it adds (`cargo tree -p plexigraf -i <crate>` after
   adding it) and how much it grows the binary (`make size`).
 - **License:** `make lint` runs cargo-deny, which rejects licenses not listed
   in `deny.toml`.
@@ -72,10 +72,10 @@ features are the deliberate exception: exactly one must be enabled.)
 - **Property tests** (`proptest`) for parsers, encoders, and invariants.
 - **Snapshot tests** (`insta`). Review changes with `cargo insta review`.
 - **Fuzzing:** `make fuzz` for the line protocol decoder. Add a target in
-  `crates/tern/fuzz/` for any new parser of untrusted input.
+  `crates/plexigraf/fuzz/` for any new parser of untrusted input.
 - **Benchmarks:** `make bench`. Run before and after touching
   `src/encoding/`, and include the numbers in the PR.
-- **Mutation testing:** `cargo mutants -p tern -f <file>` shows changes to
+- **Mutation testing:** `cargo mutants -p plexigraf -f <file>` shows changes to
   the code that no test catches. Run it on code you add tests for.
 
 ## Releases
@@ -94,7 +94,7 @@ requests and these status checks: `lint`, `test`, `msrv`, `api`, `size`, and
 
 ## Quarterly health review
 
-Each quarter, run `make health`, `cargo build --release -p tern --timings`,
+Each quarter, run `make health`, `cargo build --release -p plexigraf --timings`,
 and `make bench`, and open an issue titled "Health review YYYY-QN" that
 compares these with the last review:
 

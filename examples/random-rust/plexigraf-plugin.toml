@@ -1,0 +1,17 @@
+# Name and version come from here until `plexigraf plugin build` generates them
+# from package metadata.
+name = "random-rust"
+version = "0.1.0"
+description = "Random integer and float gauges, for testing pipelines"
+sample_config = """
+[receivers.random]
+prefix = "random"
+min = 0
+max = 100
+"""
+
+[capabilities]
+network.connect = []
+filesystem.read = []
+env = []
+secrets = []

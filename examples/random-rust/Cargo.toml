@@ -1,5 +1,5 @@
 [package]
-name = "tern-scraper-random"
+name = "plexigraf-scraper-random"
 version = "0.1.0"
 edition = "2024"
 
@@ -7,7 +7,7 @@ edition = "2024"
 crate-type = ["cdylib"]
 
 [dependencies]
-tern-sdk = { path = "../../sdk/rust", features = ["scraper"] }
+plexigraf-sdk = { path = "../../sdk/rust", features = ["scraper"] }
 serde = { version = "1", features = ["derive"] }
 fastrand = "2"
 

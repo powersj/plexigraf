@@ -5,16 +5,16 @@ package export_wit_world
 import (
 	witTypes "go.bytecodealliance.org/pkg/wit/types"
 
-	tern "github.com/tern-dev/tern-sdk-go"
-	"github.com/tern-dev/tern-sdk-go/internal/imports/tern_metrics_metrics"
-	"github.com/tern-dev/tern-sdk-go/internal/rt"
+	plexigraf "github.com/powersj/plexigraf/sdk/go"
+	"github.com/powersj/plexigraf/sdk/go/internal/imports/plexigraf_metrics_metrics"
+	"github.com/powersj/plexigraf/sdk/go/internal/rt"
 )
 
-func Export(b *tern_metrics_metrics.Batch) witTypes.Result[tern.Outcome, tern.PluginError] {
+func Export(b *plexigraf_metrics_metrics.Batch) witTypes.Result[plexigraf.Outcome, plexigraf.PluginError] {
 	defer b.Drop()
-	out, err := rt.Plugin().(tern.Exporter).Export(tern.FromHandle(b))
+	out, err := rt.Plugin().(plexigraf.Exporter).Export(plexigraf.FromHandle(b))
 	if err != nil {
-		return witTypes.Err[tern.Outcome](tern.ToPluginError(err, tern.KindTransient))
+		return witTypes.Err[plexigraf.Outcome](plexigraf.ToPluginError(err, plexigraf.KindTransient))
 	}
-	return witTypes.Ok[tern.Outcome, tern.PluginError](out)
+	return witTypes.Ok[plexigraf.Outcome, plexigraf.PluginError](out)
 }

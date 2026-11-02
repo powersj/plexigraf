@@ -11,7 +11,7 @@ targets = ["aarch64-apple-darwin", "x86_64-unknown-linux-gnu", "aarch64-unknown-
 yanked = "deny"
 
 [licenses]
-# Permissive licenses compatible with shipping tern under Apache-2.0. A crate
+# Permissive licenses compatible with shipping plexigraf under Apache-2.0. A crate
 # offered under several licenses (such as r-efi's MIT OR Apache-2.0 OR LGPL)
 # passes when any one of them is listed here.
 allow = [

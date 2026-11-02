@@ -1,4 +1,4 @@
-# Working on Tern
+# Working on Plexigraf
 
 ## Before you finish any change
 
@@ -18,8 +18,8 @@ pre-commit hook and in CI, so a change that fails it cannot merge.
   stale exemptions get cleaned up.
 - Change lint levels only in the `[workspace.lints]` table in the root
   `Cargo.toml`. The crates outside the workspace (`sdk/rust`,
-  `examples/random-rust`, `crates/tern/tests/plugins/*`, and
-  `crates/tern/fuzz`) each copy that table into their own `[lints]`; keep
+  `examples/random-rust`, `crates/plexigraf/tests/plugins/*`, and
+  `crates/plexigraf/fuzz`) each copy that table into their own `[lints]`; keep
   the copies in sync.
 - Every public item in `sdk/rust` needs a `///` doc comment: it is the API
   plugin authors read.
@@ -39,7 +39,7 @@ pre-commit hook and in CI, so a change that fails it cannot merge.
 - Snapshot tests use `insta`. When output changes on purpose, run
   `cargo insta review` and check every diff before accepting it.
 - `make coverage` shows untested lines.
-- Parsers of untrusted input get a fuzz target in `crates/tern/fuzz/`.
+- Parsers of untrusted input get a fuzz target in `crates/plexigraf/fuzz/`.
 - `make bench` before and after changes to `src/encoding/`.
-- After changing `tern-sdk`'s public API, run `make public-api` and commit
+- After changing `plexigraf-sdk`'s public API, run `make public-api` and commit
   the listing.

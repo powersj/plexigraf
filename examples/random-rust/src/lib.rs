@@ -1,7 +1,7 @@
 //! The `random` example scraper: emits random integer and float gauges.
 
+use plexigraf_sdk::{Batch, Metric, PluginError, Scraper, Timestamp, export_scraper};
 use serde::Deserialize;
-use tern_sdk::{Batch, Metric, PluginError, Scraper, Timestamp, export_scraper};
 
 // The SDK deserializes the component's TOML settings into this struct.
 #[derive(Deserialize)]
@@ -22,7 +22,7 @@ fn default_max() -> i64 {
 }
 
 impl Scraper for Random {
-    // Called by `tern config check` and before start.
+    // Called by `plexigraf config check` and before start.
     fn validate(&self) -> Result<(), PluginError> {
         if self.min >= self.max {
             return Err(PluginError::Config("min must be less than max".into()));
@@ -33,7 +33,7 @@ impl Scraper for Random {
     // `now` comes from the core, already rounded to the configured precision.
     // Each value is its own OTel gauge; "1" is the UCUM unit for a plain number.
     fn scrape(&mut self, now: Timestamp) -> Result<Batch, PluginError> {
-        let attrs = [("source", "tern")];
+        let attrs = [("source", "plexigraf")];
         let mut batch = Batch::new();
         batch.push(Metric::gauge(format!("{}.int", self.prefix), "1").point(
             now,

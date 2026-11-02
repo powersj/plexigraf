@@ -1,6 +1,6 @@
 # Build the agent and the example plugins.
 #
-#   make            build tern and all three example plugins
+#   make            build plexigraf and all three example plugins
 #   make demo       run all three plugins once through one pipeline
 #   make test       unit, integration, property, snapshot, and doc tests
 #   make lint       formatting, clippy, docs, dependency and workflow checks; run before every commit
@@ -10,7 +10,7 @@
 #   make fuzz       fuzz the line protocol decoder (FUZZ_SECONDS, default 300)
 #   make msrv       check the agent and SDK build on their minimum Rust versions
 #   make public-api regenerate sdk/rust/public-api/*.txt after an SDK API change
-#   make semver     check tern-sdk for breaking changes against BASELINE (default main)
+#   make semver     check plexigraf-sdk for breaking changes against BASELINE (default main)
 #   make size       release build, failing if the binary is over its size budget
 #   make health     numbers for the quarterly health review in CONTRIBUTING.md
 #   make update     update every lockfile to the newest compatible versions
@@ -24,9 +24,9 @@ ZIZMOR := uvx zizmor==1.31.1
 
 # Rust crates outside the workspace: they build for wasm32-wasip2. The SDK is
 # linted once per world, since each feature compiles different code.
-WASM_CRATES := examples/random-rust crates/tern/tests/plugins/chaos crates/tern/tests/plugins/rename crates/tern/tests/plugins/sink
+WASM_CRATES := examples/random-rust crates/plexigraf/tests/plugins/chaos crates/plexigraf/tests/plugins/rename crates/plexigraf/tests/plugins/sink
 SDK_FEATURES := scraper processor exporter
-FUZZ := crates/tern/fuzz
+FUZZ := crates/plexigraf/fuzz
 # Every manifest with its own lockfile.
 MANIFESTS := . sdk/rust $(WASM_CRATES) $(FUZZ)
 LINT_TOOLS := cargo-nextest cargo-llvm-cov cargo-deny cargo-machete cargo-insta \
@@ -40,13 +40,13 @@ FUZZ_SECONDS ?= 300
 # profile in Cargo.toml; raise it deliberately, in the PR that needs it.
 SIZE_BUDGET_MB ?= 18
 
-.PHONY: all tern plugins rust go python demo test lint fmt fmt-check clippy doc deny machete lockfiles \
+.PHONY: all plexigraf plugins rust go python demo test lint fmt fmt-check clippy doc deny machete lockfiles \
 	workflows coverage bench fuzz msrv public-api semver size health update changelog setup clean
 
-all: tern plugins
+all: plexigraf plugins
 
-tern:
-	cargo build --release -p tern
+plexigraf:
+	cargo build --release -p plexigraf
 
 plugins: rust go python
 
@@ -55,25 +55,25 @@ $(PLUGINS):
 
 rust: | $(PLUGINS)
 	cd examples/random-rust && cargo build --target wasm32-wasip2 --release
-	cp examples/random-rust/target/wasm32-wasip2/release/tern_scraper_random.wasm $(PLUGINS)/random_rust.wasm
-	cp examples/random-rust/tern-plugin.toml $(PLUGINS)/random_rust.tern-plugin.toml
+	cp examples/random-rust/target/wasm32-wasip2/release/plexigraf_scraper_random.wasm $(PLUGINS)/random_rust.wasm
+	cp examples/random-rust/plexigraf-plugin.toml $(PLUGINS)/random_rust.plexigraf-plugin.toml
 
 go: | $(PLUGINS)
-	cd examples/random-go && go tool componentize-go -d $(WIT) -w tern:plugin/scraper --ignore-toml-files build -o random_go.wasm
+	cd examples/random-go && go tool componentize-go -d $(WIT) -w plexigraf:plugin/scraper --ignore-toml-files build -o random_go.wasm
 	cp examples/random-go/random_go.wasm $(PLUGINS)/random_go.wasm
-	cp examples/random-go/tern-plugin.toml $(PLUGINS)/random_go.tern-plugin.toml
+	cp examples/random-go/plexigraf-plugin.toml $(PLUGINS)/random_go.plexigraf-plugin.toml
 
 python: | $(PLUGINS)
-	cd examples/random-python && $(COMPONENTIZE_PY) -d $(WIT) -w tern:plugin/scraper componentize random_scraper -p . -p ../../sdk/python -o random_py.wasm
+	cd examples/random-python && $(COMPONENTIZE_PY) -d $(WIT) -w plexigraf:plugin/scraper componentize random_scraper -p . -p ../../sdk/python -o random_py.wasm
 	cp examples/random-python/random_py.wasm $(PLUGINS)/random_py.wasm
-	cp examples/random-python/tern-plugin.toml $(PLUGINS)/random_py.tern-plugin.toml
+	cp examples/random-python/plexigraf-plugin.toml $(PLUGINS)/random_py.plexigraf-plugin.toml
 
 demo: all
-	./target/release/tern once --config examples/random-all.toml
+	./target/release/plexigraf once --config examples/random-all.toml
 
 # nextest does not run doctests, so the SDK's runs separately.
 test:
-	cargo nextest run -p tern
+	cargo nextest run -p plexigraf
 	cargo test --doc --manifest-path sdk/rust/Cargo.toml --features scraper
 
 lint: lockfiles fmt-check clippy doc deny machete workflows
@@ -117,10 +117,10 @@ workflows:
 	$(ZIZMOR) --offline .github
 
 coverage:
-	cargo llvm-cov nextest -p tern --html --open
+	cargo llvm-cov nextest -p plexigraf --html --open
 
 bench:
-	cargo bench -p tern --bench encoding
+	cargo bench -p plexigraf --bench encoding
 
 fuzz:
 	mkdir -p $(FUZZ)/corpus/influx_decode
@@ -128,7 +128,7 @@ fuzz:
 
 msrv:
 	rustup toolchain install $(AGENT_MSRV) $(SDK_MSRV) --profile minimal -t wasm32-wasip2
-	cargo +$(AGENT_MSRV) check -p tern --locked
+	cargo +$(AGENT_MSRV) check -p plexigraf --locked
 	for f in $(SDK_FEATURES); do \
 		cargo +$(SDK_MSRV) check --manifest-path sdk/rust/Cargo.toml --target wasm32-wasip2 --features $$f || exit 1; \
 	done
@@ -143,16 +143,16 @@ semver:
 		cargo semver-checks --manifest-path sdk/rust/Cargo.toml --baseline-rev $(BASELINE) --only-explicit-features --features $$f || exit 1; \
 	done
 
-size: tern
-	@bytes=$$(wc -c < target/release/tern); budget=$$(( $(SIZE_BUDGET_MB) * 1000000 )); \
-	echo "target/release/tern: $$bytes bytes (budget $$budget)"; \
+size: plexigraf
+	@bytes=$$(wc -c < target/release/plexigraf); budget=$$(( $(SIZE_BUDGET_MB) * 1000000 )); \
+	echo "target/release/plexigraf: $$bytes bytes (budget $$budget)"; \
 	test $$bytes -le $$budget || { echo "over the $(SIZE_BUDGET_MB) MB size budget" >&2; exit 1; }
 
 health: size
-	@echo "direct dependencies: $$(cargo tree -p tern --depth 1 -e normal --prefix none | tail -n +2 | wc -l)"
-	@echo "all dependencies:    $$(cargo tree -p tern -e normal --prefix none | sort -u | wc -l)"
+	@echo "direct dependencies: $$(cargo tree -p plexigraf --depth 1 -e normal --prefix none | tail -n +2 | wc -l)"
+	@echo "all dependencies:    $$(cargo tree -p plexigraf -e normal --prefix none | sort -u | wc -l)"
 	cargo deny check advisories
-	@echo "For compile time, run: cargo build --release -p tern --timings"
+	@echo "For compile time, run: cargo build --release -p plexigraf --timings"
 
 update:
 	for m in $(MANIFESTS); do cargo update --manifest-path $$m/Cargo.toml || exit 1; done

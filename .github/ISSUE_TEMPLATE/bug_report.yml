@@ -1,5 +1,5 @@
 name: Bug report
-description: Tern does something wrong or crashes.
+description: Plexigraf does something wrong or crashes.
 labels: [bug]
 body:
   - type: textarea
@@ -20,8 +20,8 @@ body:
   - type: input
     id: version
     attributes:
-      label: Tern version
-      description: Output of `tern --version`.
+      label: Plexigraf version
+      description: Output of `plexigraf --version`.
     validations:
       required: true
   - type: input

@@ -1,7 +1,7 @@
 [project]
-name = "tern-sdk"
+name = "plexigraf-sdk"
 version = "0.1.0"
-description = "SDK for writing Tern plugins in Python"
+description = "SDK for writing Plexigraf plugins in Python"
 requires-python = ">=3.11"
 license = "Apache-2.0"
 

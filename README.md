@@ -1,4 +1,4 @@
-# Tern
+# Plexigraf
 
 A pluggable, standards-based metrics agent. The core is a small Rust binary;
 every receiver, processor, and exporter beyond a few built-ins is a sandboxed
@@ -12,7 +12,7 @@ for Rust, Go, and Python, with the `random` example plugin in each language.
 ## Quick start
 
 ```sh
-make          # build tern and the three example plugins into examples/plugins/
+make          # build plexigraf and the three example plugins into examples/plugins/
 make demo     # run the Rust, Go, and Python plugins once through one pipeline
 make test     # unit tests plus end-to-end tests with real plugins
 ```
@@ -21,18 +21,18 @@ make test     # unit tests plus end-to-end tests with real plugins
 `examples/random-all.jsonl`:
 
 ```text
-rust,source=tern int=21i,float=0.5853531656354315 1793570962649000000
-go,source=tern int=5i,float=0.37693630835985714 1793570962649012000
-python,source=tern int=1i,float=0.9517904533023209 1793570962649016000
+rust,source=plexigraf int=21i,float=0.5853531656354315 1793570962649000000
+go,source=plexigraf int=5i,float=0.37693630835985714 1793570962649012000
+python,source=plexigraf int=1i,float=0.9517904533023209 1793570962649016000
 ```
 
 Other commands:
 
 ```sh
-tern run --config examples/random-rust.toml       # run until Ctrl-C, then drain
-tern once --config examples/random-rust.toml      # one scrape per scraper, then exit
-tern config check --config examples/random-all.toml
-tern plugin inspect examples/plugins/random_py.wasm
+plexigraf run --config examples/random-rust.toml       # run until Ctrl-C, then drain
+plexigraf once --config examples/random-rust.toml      # one scrape per scraper, then exit
+plexigraf config check --config examples/random-all.toml
+plexigraf plugin inspect examples/plugins/random_py.wasm
 ```
 
 ## Requirements
@@ -65,7 +65,7 @@ the lint and test conventions. Report vulnerabilities as described in
 
 ## Telemetry
 
-Tern sends nothing anywhere you did not configure. Its own metrics (see
+Plexigraf sends nothing anywhere you did not configure. Its own metrics (see
 "Service telemetry" below) are served only on the endpoint you set, and
 panics are written to its log. There is no crash reporting service and no
 usage tracking.
@@ -74,12 +74,12 @@ usage tracking.
 
 | Path | What it is |
 | --- | --- |
-| `wit/` | The plugin contract: `tern:metrics` (the OTel data model and the `batch` resource) and `tern:plugin` (host services and one world per plugin kind) |
-| `crates/tern/` | The agent: config, plugin host, pipeline runtime, encodings, CLI |
-| `crates/tern/tests/plugins/` | Test plugins: `chaos` (misbehaves on purpose), `rename` (processor), `sink` (exporter) |
-| `sdk/rust/` | `tern-sdk` crate: `Scraper`, `Processor`, and `Exporter` traits, a `Metric` builder, and export macros |
-| `sdk/go/` | `tern-sdk-go` module: plugin types plus one package per world (`scraper`, `processor`, `exporter`). `generate.sh` regenerates the bindings |
-| `sdk/python/` | `tern_sdk` package: `Scraper`, `Processor`, and `Exporter` base classes and `register` |
+| `wit/` | The plugin contract: `plexigraf:metrics` (the OTel data model and the `batch` resource) and `plexigraf:plugin` (host services and one world per plugin kind) |
+| `crates/plexigraf/` | The agent: config, plugin host, pipeline runtime, encodings, CLI |
+| `crates/plexigraf/tests/plugins/` | Test plugins: `chaos` (misbehaves on purpose), `rename` (processor), `sink` (exporter) |
+| `sdk/rust/` | `plexigraf-sdk` crate: `Scraper`, `Processor`, and `Exporter` traits, a `Metric` builder, and export macros |
+| `sdk/go/` | `plexigraf-sdk-go` module: plugin types plus one package per world (`scraper`, `processor`, `exporter`). `generate.sh` regenerates the bindings |
+| `sdk/python/` | `plexigraf_sdk` package: `Scraper`, `Processor`, and `Exporter` base classes and `register` |
 | `examples/random-{rust,go,python}/` | The design's `random` scraper in each language |
 | `examples/*.toml` | Example configs |
 
@@ -93,7 +93,7 @@ usage tracking.
   `{ routing_labels = {...}, match = "...", allow_no_match = true }`. The
   loader checks unknown references, one-sided connectors, and connector
   cycles. A config with no pipelines fails with an error that says so, and a
-  Telegraf `[[inputs.*]]` table gets an error naming the Tern equivalent.
+  Telegraf `[[inputs.*]]` table gets an error naming the Plexigraf equivalent.
 - **Plugin host.** Wasmtime 50 with the component model. The world is inferred
   from a component's exports, or set in its manifest. Each instance runs on
   its own thread with its own `Store`.
@@ -122,10 +122,10 @@ usage tracking.
   the `health_check` extension, the `influx` encoding (encode and decode,
   including `multi_field_lines`, `counter_fields`, and `string_values`), and
   the `json` encoding (OTLP JSON, encode only). Plugins reach the same
-  encodings through `tern:plugin/encoding`.
-- **Service telemetry.** `tern.receiver.accepted_metric_points`,
-  `tern.exporter.sent_metric_points`, `tern.exporter.send_failed_metric_points`,
-  `tern.conversion.lossy`, and others, served as Prometheus text at
+  encodings through `plexigraf:plugin/encoding`.
+- **Service telemetry.** `plexigraf.receiver.accepted_metric_points`,
+  `plexigraf.exporter.sent_metric_points`, `plexigraf.exporter.send_failed_metric_points`,
+  `plexigraf.conversion.lossy`, and others, served as Prometheus text at
   `[service.telemetry] metrics.endpoint`.
 
 ## Not yet
@@ -133,16 +133,16 @@ usage tracking.
 Each of these is either rejected with a clear error or simply absent:
 
 - The push `receiver` world, async exports, and `consume-metrics`.
-- Capabilities and grants, `tern.lock`, OCI sources, signatures, and the
+- Capabilities and grants, `plexigraf.lock`, OCI sources, signatures, and the
   default registry. Only `file://` sources work.
 - The `otlp` receiver and exporter, protobuf OTLP, and the `prometheus`
   encoding.
 - The `filter` and `transform` processors with OTTL, the `routing`
   connector, and dead-letter edges.
 - `file_storage` and disk queues, `per_pipeline` queues, and `share_instance`.
-- Reload on SIGHUP, the compiled-module cache, secret stores, and `tern-privd`.
-- The plugin-author CLI (`tern plugin new`, `build`, `pack`, and `sign`) and
-  `tern config migrate`.
+- Reload on SIGHUP, the compiled-module cache, secret stores, and `plexigraf-privd`.
+- The plugin-author CLI (`plexigraf plugin new`, `build`, `pack`, and `sign`) and
+  `plexigraf config migrate`.
 
 ## Differences from DESIGN.md
 
@@ -153,7 +153,7 @@ These came out of building against the real toolchains.
    `%export`. The two packages live in separate files (`wit/plugin.wit` and
    `wit/deps/metrics/metrics.wit`), which every binding generator accepts.
 2. **Lifecycle moved into an interface.** `validate-config`, `start`, and
-   `shutdown` are exported through `tern:plugin/lifecycle` instead of at world
+   `shutdown` are exported through `plexigraf:plugin/lifecycle` instead of at world
    level. componentize-py cannot link a component whose world exports
    `shutdown` or `close`, because the name collides with libc's symbols.
    Interface exports are namespaced, so this class of collision cannot recur.
@@ -163,11 +163,11 @@ These came out of building against the real toolchains.
    off the async runtime, so a slow plugin cannot stall others. The SDK
    traits are therefore synchronous (`fn scrape`, not `async fn scrape`).
 4. **Go registration is per world.** Go cannot link wasm exports
-   conditionally, so a single `tern.Register` that infers the kind from
+   conditionally, so a single `plexigraf.Register` that infers the kind from
    methods is not possible. Plugins call `scraper.Register(&Random{...})`, and
    importing the `scraper` package selects the world. The values passed to
    `Register` are the defaults that config overrides.
-5. **A `validate` hook in every SDK.** `tern config check` calls
+5. **A `validate` hook in every SDK.** `plexigraf config check` calls
    `validate-config` without starting the plugin, so a check placed in `start`
    (as in the design's `random` example) would never run there. Each SDK gives
    plugins an optional `validate` that runs on check and before start.

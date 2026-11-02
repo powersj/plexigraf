@@ -11,10 +11,10 @@ import (
 	"github.com/BurntSushi/toml"
 	witTypes "go.bytecodealliance.org/pkg/wit/types"
 
-	tern "github.com/tern-dev/tern-sdk-go"
+	plexigraf "github.com/powersj/plexigraf/sdk/go"
 )
 
-type Result = witTypes.Result[witTypes.Unit, tern.PluginError]
+type Result = witTypes.Result[witTypes.Unit, plexigraf.PluginError]
 
 var plugin any
 
@@ -23,7 +23,7 @@ var plugin any
 func Register(p any) {
 	v := reflect.ValueOf(p)
 	if v.Kind() != reflect.Pointer || v.Elem().Kind() != reflect.Struct {
-		panic(fmt.Sprintf("tern: Register needs a pointer to a struct, got %T", p))
+		panic(fmt.Sprintf("plexigraf: Register needs a pointer to a struct, got %T", p))
 	}
 	plugin = p
 }
@@ -47,7 +47,7 @@ func decode(cfg string, into any) error {
 }
 
 func fail(err error) Result {
-	return witTypes.Err[witTypes.Unit](tern.ToPluginError(err, tern.KindConfig))
+	return witTypes.Err[witTypes.Unit](plexigraf.ToPluginError(err, plexigraf.KindConfig))
 }
 
 // ValidateConfig decodes into a copy of the plugin, so checking settings
@@ -59,12 +59,12 @@ func ValidateConfig(cfg string) Result {
 	if err := decode(cfg, c.Interface()); err != nil {
 		return fail(err)
 	}
-	if val, ok := c.Interface().(tern.Validator); ok {
+	if val, ok := c.Interface().(plexigraf.Validator); ok {
 		if err := val.Validate(); err != nil {
 			return fail(err)
 		}
 	}
-	return witTypes.Ok[witTypes.Unit, tern.PluginError](witTypes.Unit{})
+	return witTypes.Ok[witTypes.Unit, plexigraf.PluginError](witTypes.Unit{})
 }
 
 func Start(cfg string) Result {
@@ -74,21 +74,21 @@ func Start(cfg string) Result {
 	if err := decode(cfg, plugin); err != nil {
 		return fail(err)
 	}
-	if val, ok := plugin.(tern.Validator); ok {
+	if val, ok := plugin.(plexigraf.Validator); ok {
 		if err := val.Validate(); err != nil {
 			return fail(err)
 		}
 	}
-	if s, ok := plugin.(tern.Starter); ok {
+	if s, ok := plugin.(plexigraf.Starter); ok {
 		if err := s.Start(); err != nil {
 			return fail(err)
 		}
 	}
-	return witTypes.Ok[witTypes.Unit, tern.PluginError](witTypes.Unit{})
+	return witTypes.Ok[witTypes.Unit, plexigraf.PluginError](witTypes.Unit{})
 }
 
 func Shutdown() {
-	if s, ok := plugin.(tern.Shutdowner); ok {
+	if s, ok := plugin.(plexigraf.Shutdowner); ok {
 		s.Shutdown()
 	}
 }

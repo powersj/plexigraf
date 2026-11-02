@@ -1,10 +1,10 @@
-module example.com/tern-scraper-random-go
+module example.com/plexigraf-scraper-random-go
 
 go 1.27.1
 
 tool github.com/bytecodealliance/componentize-go
 
-require github.com/tern-dev/tern-sdk-go v0.0.0
+require github.com/powersj/plexigraf/sdk/go v0.0.0
 
 require (
 	github.com/BurntSushi/toml v1.6.0 // indirect
@@ -15,4 +15,4 @@ require (
 	golang.org/x/sys v0.37.0 // indirect
 )
 
-replace github.com/tern-dev/tern-sdk-go => ../../sdk/go
+replace github.com/powersj/plexigraf/sdk/go => ../../sdk/go

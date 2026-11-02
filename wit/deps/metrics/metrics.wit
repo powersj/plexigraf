@@ -1,6 +1,6 @@
 // Mirrors the OTLP metrics data model (opentelemetry/proto/metrics/v1),
 // using OTLP's own names.
-package tern:metrics@0.1.0;
+package plexigraf:metrics@0.1.0;
 
 interface metrics {
   // OTel AnyValue, including nested arrays and maps. WIT has no recursive

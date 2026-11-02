@@ -1,4 +1,4 @@
-module github.com/tern-dev/tern-sdk-go
+module github.com/powersj/plexigraf/sdk/go
 
 go 1.27.1
 

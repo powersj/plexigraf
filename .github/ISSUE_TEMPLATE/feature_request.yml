@@ -1,5 +1,5 @@
 name: Feature request
-description: Something Tern should do that it does not.
+description: Something Plexigraf should do that it does not.
 labels: [enhancement]
 body:
   - type: textarea
@@ -13,4 +13,4 @@ body:
     id: proposal
     attributes:
       label: Proposal
-      description: What you would like Tern to do. Check DESIGN.md first; it may already be planned or ruled out.
+      description: What you would like Plexigraf to do. Check DESIGN.md first; it may already be planned or ruled out.

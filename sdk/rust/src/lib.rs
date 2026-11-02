@@ -1,4 +1,4 @@
-//! Write Tern plugins in Rust.
+//! Write Plexigraf plugins in Rust.
 //!
 //! Enable the feature for the world your plugin targets (`scraper`,
 //! `processor`, or `exporter`), implement the matching trait on your config
@@ -6,7 +6,7 @@
 //!
 //! ```
 //! use serde::Deserialize;
-//! use tern_sdk::{export_scraper, Batch, Metric, PluginError, Scraper, Timestamp};
+//! use plexigraf_sdk::{export_scraper, Batch, Metric, PluginError, Scraper, Timestamp};
 //!
 //! #[derive(Deserialize)]
 //! struct Hello {}
@@ -25,14 +25,14 @@
 //! Build with `cargo build --target wasm32-wasip2 --release`.
 
 #[cfg(not(any(feature = "scraper", feature = "processor", feature = "exporter")))]
-compile_error!("enable exactly one of the `scraper`, `processor`, or `exporter` features of tern-sdk");
+compile_error!("enable exactly one of the `scraper`, `processor`, or `exporter` features of plexigraf-sdk");
 
 #[cfg(any(
     all(feature = "scraper", feature = "processor"),
     all(feature = "scraper", feature = "exporter"),
     all(feature = "processor", feature = "exporter"),
 ))]
-compile_error!("enable only one of the `scraper`, `processor`, or `exporter` features of tern-sdk");
+compile_error!("enable only one of the `scraper`, `processor`, or `exporter` features of plexigraf-sdk");
 
 /// Generated bindings for the selected world. Plugin code should not need
 /// these; use the SDK types instead.
@@ -48,39 +48,39 @@ pub mod bindings {
     #[cfg(feature = "scraper")]
     wit_bindgen::generate!({
         path: "../../wit",
-        world: "tern:plugin/scraper",
+        world: "plexigraf:plugin/scraper",
         pub_export_macro: true,
         export_macro_name: "__export_world",
-        default_bindings_module: "tern_sdk::bindings",
+        default_bindings_module: "plexigraf_sdk::bindings",
         generate_all,
     });
     #[cfg(feature = "processor")]
     wit_bindgen::generate!({
         path: "../../wit",
-        world: "tern:plugin/processor",
+        world: "plexigraf:plugin/processor",
         pub_export_macro: true,
         export_macro_name: "__export_world",
-        default_bindings_module: "tern_sdk::bindings",
+        default_bindings_module: "plexigraf_sdk::bindings",
         generate_all,
     });
     #[cfg(feature = "exporter")]
     wit_bindgen::generate!({
         path: "../../wit",
-        world: "tern:plugin/exporter",
+        world: "plexigraf:plugin/exporter",
         pub_export_macro: true,
         export_macro_name: "__export_world",
-        default_bindings_module: "tern_sdk::bindings",
+        default_bindings_module: "plexigraf_sdk::bindings",
         generate_all,
     });
 }
 
 use serde::de::DeserializeOwned;
 
-/// The raw `tern:metrics` types, which mirror the OTLP data model.
-pub use bindings::tern::metrics::metrics as raw;
-pub use bindings::tern::plugin::types::PluginError;
+/// The raw `plexigraf:metrics` types, which mirror the OTLP data model.
+pub use bindings::plexigraf::metrics::metrics as raw;
+pub use bindings::plexigraf::plugin::types::PluginError;
 #[cfg(feature = "exporter")]
-pub use bindings::tern::plugin::types::{ExportOutcome, PartialFailure};
+pub use bindings::plexigraf::plugin::types::{ExportOutcome, PartialFailure};
 
 use raw::{
     AggregationTemporality, AnyValue, Data, DataPointFlags, Gauge, KeyValue, Leaf, Number, NumberDataPoint, Sum,
@@ -371,7 +371,7 @@ impl From<Metric> for raw::Metric {
 
 /// Logging through the agent, tagged with the component ID.
 pub mod log {
-    use crate::bindings::tern::plugin::host::{self, Kv, Level};
+    use crate::bindings::plexigraf::plugin::host::{self, Kv, Level};
 
     fn emit(level: Level, msg: &str, fields: &[(&str, &str)]) {
         let fields: Vec<Kv> = fields
@@ -403,7 +403,7 @@ pub mod log {
 
 /// Persisted plugin state and secrets.
 pub mod host {
-    use crate::bindings::tern::plugin::host;
+    use crate::bindings::plexigraf::plugin::host;
 
     /// Read a secret by name. Returns `None` unless the operator approved
     /// this plugin for that name.
@@ -425,7 +425,7 @@ pub mod host {
 /// The core's encodings, so plugins never bundle their own codecs.
 pub mod encoding {
     use crate::Batch;
-    use crate::bindings::tern::plugin::encoding;
+    use crate::bindings::plexigraf::plugin::encoding;
 
     /// Decode `data` in a built-in format, such as `"influx"`, into a batch.
     pub fn decode(format: &str, options_toml: &str, data: &[u8]) -> Result<Batch, String> {
@@ -439,7 +439,7 @@ pub mod encoding {
 
 /// A plugin that polls on an interval.
 pub trait Scraper: DeserializeOwned + Sized + 'static {
-    /// Check settings without side effects; `tern config check` calls this.
+    /// Check settings without side effects; `plexigraf config check` calls this.
     fn validate(&self) -> Result<(), PluginError> {
         Ok(())
     }
@@ -456,7 +456,7 @@ pub trait Scraper: DeserializeOwned + Sized + 'static {
 
 /// A plugin that transforms batches, and optionally emits on a timer.
 pub trait Processor: DeserializeOwned + Sized + 'static {
-    /// Check settings without side effects; `tern config check` calls this.
+    /// Check settings without side effects; `plexigraf config check` calls this.
     fn validate(&self) -> Result<(), PluginError> {
         Ok(())
     }
@@ -478,7 +478,7 @@ pub trait Processor: DeserializeOwned + Sized + 'static {
 /// A plugin that sends batches somewhere.
 #[cfg(feature = "exporter")]
 pub trait Exporter: DeserializeOwned + Sized + 'static {
-    /// Check settings without side effects; `tern config check` calls this.
+    /// Check settings without side effects; `plexigraf config check` calls this.
     fn validate(&self) -> Result<(), PluginError> {
         Ok(())
     }
@@ -551,14 +551,14 @@ pub mod __rt {
 #[macro_export]
 macro_rules! export_scraper {
     ($t:ty) => {
-        struct __TernGuest;
-        impl $crate::bindings::Guest for __TernGuest {
+        struct __PlexigrafGuest;
+        impl $crate::bindings::Guest for __PlexigrafGuest {
             fn scrape(now: u64) -> Result<$crate::raw::Batch, $crate::PluginError> {
                 $crate::__rt::with::<$t, _>(|s| <$t as $crate::Scraper>::scrape(s, $crate::Timestamp(now)))
                     .map($crate::Batch::into_raw)
             }
         }
-        impl $crate::bindings::exports::tern::plugin::lifecycle::Guest for __TernGuest {
+        impl $crate::bindings::exports::plexigraf::plugin::lifecycle::Guest for __PlexigrafGuest {
             fn validate_config(c: String) -> Result<(), $crate::PluginError> {
                 $crate::__rt::validate::<$t>(&c, <$t as $crate::Scraper>::validate)
             }
@@ -569,7 +569,7 @@ macro_rules! export_scraper {
                 $crate::__rt::stop::<$t>(<$t as $crate::Scraper>::shutdown)
             }
         }
-        $crate::bindings::__export_world!(__TernGuest);
+        $crate::bindings::__export_world!(__PlexigrafGuest);
     };
 }
 
@@ -578,8 +578,8 @@ macro_rules! export_scraper {
 #[macro_export]
 macro_rules! export_processor {
     ($t:ty) => {
-        struct __TernGuest;
-        impl $crate::bindings::Guest for __TernGuest {
+        struct __PlexigrafGuest;
+        impl $crate::bindings::Guest for __PlexigrafGuest {
             fn process(input: $crate::raw::Batch) -> Result<$crate::raw::Batch, $crate::PluginError> {
                 $crate::__rt::with::<$t, _>(|s| <$t as $crate::Processor>::process(s, $crate::Batch::from_raw(input)))
                     .map($crate::Batch::into_raw)
@@ -589,7 +589,7 @@ macro_rules! export_processor {
                     .map($crate::Batch::into_raw)
             }
         }
-        impl $crate::bindings::exports::tern::plugin::lifecycle::Guest for __TernGuest {
+        impl $crate::bindings::exports::plexigraf::plugin::lifecycle::Guest for __PlexigrafGuest {
             fn validate_config(c: String) -> Result<(), $crate::PluginError> {
                 $crate::__rt::validate::<$t>(&c, <$t as $crate::Processor>::validate)
             }
@@ -600,7 +600,7 @@ macro_rules! export_processor {
                 $crate::__rt::stop::<$t>(<$t as $crate::Processor>::shutdown)
             }
         }
-        $crate::bindings::__export_world!(__TernGuest);
+        $crate::bindings::__export_world!(__PlexigrafGuest);
     };
 }
 
@@ -609,13 +609,13 @@ macro_rules! export_processor {
 #[macro_export]
 macro_rules! export_exporter {
     ($t:ty) => {
-        struct __TernGuest;
-        impl $crate::bindings::Guest for __TernGuest {
+        struct __PlexigrafGuest;
+        impl $crate::bindings::Guest for __PlexigrafGuest {
             fn export(b: $crate::raw::Batch) -> Result<$crate::ExportOutcome, $crate::PluginError> {
                 $crate::__rt::with::<$t, _>(|s| <$t as $crate::Exporter>::export(s, $crate::Batch::from_raw(b)))
             }
         }
-        impl $crate::bindings::exports::tern::plugin::lifecycle::Guest for __TernGuest {
+        impl $crate::bindings::exports::plexigraf::plugin::lifecycle::Guest for __PlexigrafGuest {
             fn validate_config(c: String) -> Result<(), $crate::PluginError> {
                 $crate::__rt::validate::<$t>(&c, <$t as $crate::Exporter>::validate)
             }
@@ -626,6 +626,6 @@ macro_rules! export_exporter {
                 $crate::__rt::stop::<$t>(<$t as $crate::Exporter>::shutdown)
             }
         }
-        $crate::bindings::__export_world!(__TernGuest);
+        $crate::bindings::__export_world!(__PlexigrafGuest);
     };
 }

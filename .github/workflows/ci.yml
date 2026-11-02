@@ -64,7 +64,7 @@ jobs:
       - run: rustup toolchain install nightly --profile minimal
       - name: Public API listing is up to date
         run: make public-api && git diff --exit-code sdk/rust/public-api
-      - name: No unannounced breaking changes in tern-sdk
+      - name: No unannounced breaking changes in plexigraf-sdk
         if: github.event_name == 'pull_request'
         env:
           BASE_REF: ${{ github.base_ref }}
@@ -87,7 +87,7 @@ jobs:
           persist-credentials: false
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
-          workspaces: crates/tern/fuzz
+          workspaces: crates/plexigraf/fuzz
       - uses: taiki-e/install-action@1919c4a95903d2c33e4a221102edca87309fc14b # v2.89.0
         with:
           tool: cargo-fuzz

@@ -1,11 +1,11 @@
 # Security policy
 
-Tern runs third-party plugins in a WebAssembly sandbox, so we treat a way out
+Plexigraf runs third-party plugins in a WebAssembly sandbox, so we treat a way out
 of that sandbox as the most serious kind of bug.
 
 ## Supported versions
 
-Tern is pre-1.0. Only the latest release gets security fixes.
+Plexigraf is pre-1.0. Only the latest release gets security fixes.
 
 ## Reporting a vulnerability
 
@@ -14,7 +14,7 @@ Report vulnerabilities privately through GitHub's
 on this repository (**Security** tab, then **Report a vulnerability**). Do not
 open a public issue.
 
-Include the Tern version, the config and plugin needed to reproduce the
+Include the Plexigraf version, the config and plugin needed to reproduce the
 problem, and what an attacker gains.
 
 We aim to acknowledge a report within 3 working days and to agree on a

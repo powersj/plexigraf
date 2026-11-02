@@ -1,8 +1,8 @@
-// tern:plugin 0.1 uses synchronous exports (the "sync twins" from the design)
+// plexigraf:plugin 0.1 uses synchronous exports (the "sync twins" from the design)
 // so that Rust, Go, and Python guests all target the same worlds today. The
 // push `receiver` world needs async `consume-metrics` and lands with WASI 0.3
 // guest support in every SDK.
-package tern:plugin@0.1.0;
+package plexigraf:plugin@0.1.0;
 
 interface types {
   enum delivery-status { delivered, partial, failed }
@@ -34,7 +34,7 @@ interface host {
 
 // The core's encodings, so plugins never bundle their own.
 interface encoding {
-  use tern:metrics/metrics@0.1.0.{batch};
+  use plexigraf:metrics/metrics@0.1.0.{batch};
   decode: func(format: string, options-toml: string, data: list<u8>) -> result<batch, string>;
   encode: func(format: string, options-toml: string, b: borrow<batch>) -> result<list<u8>, string>;
 }
@@ -54,7 +54,7 @@ interface lifecycle {
 }
 
 world scraper {
-  use tern:metrics/metrics@0.1.0.{batch};
+  use plexigraf:metrics/metrics@0.1.0.{batch};
   use types.{plugin-error};
   import host;
   import encoding;
@@ -63,7 +63,7 @@ world scraper {
 }
 
 world processor {
-  use tern:metrics/metrics@0.1.0.{batch};
+  use plexigraf:metrics/metrics@0.1.0.{batch};
   use types.{plugin-error};
   import host;
   import encoding;
@@ -73,7 +73,7 @@ world processor {
 }
 
 world exporter {
-  use tern:metrics/metrics@0.1.0.{batch};
+  use plexigraf:metrics/metrics@0.1.0.{batch};
   use types.{export-outcome, plugin-error};
   import host;
   import encoding;

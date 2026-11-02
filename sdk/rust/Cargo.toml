@@ -1,13 +1,13 @@
 [package]
-name = "tern-sdk"
-description = "SDK for writing Tern plugins in Rust"
+name = "plexigraf-sdk"
+description = "SDK for writing Plexigraf plugins in Rust"
 version = "0.1.0"
 edition = "2024"
 # What plugin authors need: set by wit-bindgen's dependencies and let-chains.
 # CI checks it; raising it is a breaking change for plugin authors.
 rust-version = "1.88"
 license = "Apache-2.0"
-repository = "https://github.com/powersj/tern"
+repository = "https://github.com/powersj/plexigraf"
 
 [features]
 # Pick exactly one: the world the plugin targets.

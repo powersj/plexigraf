@@ -1,7 +1,7 @@
 import random
 from dataclasses import dataclass
 
-from tern_sdk import Batch, ConfigError, Metric, Scraper, register
+from plexigraf_sdk import Batch, ConfigError, Metric, Scraper, register
 
 
 # The SDK builds an instance from the component's TOML settings.
@@ -11,13 +11,13 @@ class Random(Scraper):
     min: int = 0
     max: int = 100
 
-    # Called by `tern config check` and before start.
+    # Called by `plexigraf config check` and before start.
     def validate(self) -> None:
         if self.min >= self.max:
             raise ConfigError("min must be less than max")
 
     def scrape(self, now: int) -> Batch:
-        attrs = {"source": "tern"}
+        attrs = {"source": "plexigraf"}
         batch = Batch()
         batch.push(Metric.gauge(f"{self.prefix}.int", unit="1").point(now, random.randint(self.min, self.max - 1), attrs))
         batch.push(Metric.gauge(f"{self.prefix}.float", unit="1").point(now, random.random(), attrs))

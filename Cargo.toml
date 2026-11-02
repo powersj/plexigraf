@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/tern"]
+members = ["crates/plexigraf"]
 # Guest crates build for wasm32-wasip2, so they are not workspace members.
 exclude = ["examples", "sdk/rust"]
 
@@ -10,7 +10,7 @@ edition = "2024"
 # Minimum supported Rust for the agent, set by wasmtime. CI checks it.
 rust-version = "1.97"
 license = "Apache-2.0"
-repository = "https://github.com/powersj/tern"
+repository = "https://github.com/powersj/plexigraf"
 
 [profile.release]
 # Smaller, faster binary at the cost of a slower release build. Panics still

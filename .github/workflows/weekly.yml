@@ -1,0 +1,37 @@
+name: Weekly
+
+# Early warning for upstream breakage: the next Rust release (beta) and the
+# newest dependency versions, before either reaches us through normal updates.
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  upstream:
+    strategy:
+      fail-fast: false
+      matrix:
+        toolchain: [stable, beta]
+    runs-on: ubuntu-latest
+    env:
+      RUSTUP_TOOLCHAIN: ${{ matrix.toolchain }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal -c clippy,rustfmt -t wasm32-wasip2
+      - uses: taiki-e/install-action@1919c4a95903d2c33e4a221102edca87309fc14b # v2.89.0
+        with:
+          tool: cargo-nextest,cargo-deny,cargo-machete
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - run: make update
+      - run: make lint
+      - run: make test

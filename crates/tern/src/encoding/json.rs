@@ -8,9 +8,10 @@ use serde::Deserialize;
 use serde_json::{Map, Value, json};
 
 use crate::bindings::metrics::{
-    AggregationTemporality, AnyValue, Buckets, Data, DataPointFlags, Exemplar, KeyValue, Leaf, Node, Number,
+    AggregationTemporality, AnyValue, Buckets, Data, DataPointFlags, Exemplar, InstrumentationScope, KeyValue, Leaf,
+    Node, Number,
 };
-use crate::model::{BatchData, base64};
+use crate::model::{BatchData, base64, empty_resource};
 
 #[derive(Debug, Default, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -59,10 +60,21 @@ pub fn encode(opts: &EncodeOptions, batch: &BatchData) -> Result<Vec<u8>, String
         scopes[si].1.push(Value::Object(obj));
     }
 
+    // Plugins can pass unvalidated batches through the encoding interface (a
+    // decoded batch has no scope yet), so a missing resource or scope encodes
+    // as an empty one instead of panicking, as the influx encoder does.
+    let no_resource = empty_resource();
+    let no_scope = InstrumentationScope {
+        name: String::new(),
+        version: String::new(),
+        attributes: Vec::new(),
+        dropped_attributes_count: 0,
+        schema_url: String::new(),
+    };
     let resource_metrics: Vec<Value> = resource_metrics
         .into_iter()
         .map(|(ri, scopes)| {
-            let r = &batch.resources[ri as usize];
+            let r = batch.resources.get(ri as usize).unwrap_or(&no_resource);
             let mut resource = Map::new();
             resource.insert("attributes".into(), attrs(&r.attributes));
             if r.dropped_attributes_count > 0 {
@@ -71,7 +83,7 @@ pub fn encode(opts: &EncodeOptions, batch: &BatchData) -> Result<Vec<u8>, String
             let scope_metrics: Vec<Value> = scopes
                 .into_iter()
                 .map(|(si, metrics)| {
-                    let s = &batch.scopes[si as usize];
+                    let s = batch.scopes.get(si as usize).unwrap_or(&no_scope);
                     let mut scope = Map::new();
                     scope.insert("name".into(), json!(s.name));
                     if !s.version.is_empty() {
@@ -294,8 +306,8 @@ fn node(nodes: &[Node], i: usize) -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bindings::metrics::{InstrumentationScope, Metric, NumberDataPoint, Sum};
-    use crate::model::{empty_resource, kv_str};
+    use crate::bindings::metrics::{Metric, NumberDataPoint, Sum};
+    use crate::model::kv_str;
 
     #[test]
     fn matches_the_design_cpu_example() {
@@ -377,5 +389,37 @@ mod tests {
         )
         .unwrap();
         assert_eq!(out, expected);
+    }
+
+    #[test]
+    fn missing_resource_and_scope_encode_as_empty() {
+        // A plugin can hand the host any batch through the encoding interface;
+        // out-of-range indices used to panic the host thread.
+        let b = BatchData {
+            resources: vec![],
+            scopes: vec![],
+            metrics: vec![Metric {
+                resource: 7,
+                scope: 9,
+                name: "requests".into(),
+                description: String::new(),
+                unit: "1".into(),
+                data: Data::Sum(Sum {
+                    data_points: vec![NumberDataPoint {
+                        attributes: vec![],
+                        start_time_unix_nano: 0,
+                        time_unix_nano: 1,
+                        value: Number::Int(3),
+                        exemplars: vec![],
+                        flags: DataPointFlags::empty(),
+                    }],
+                    aggregation_temporality: AggregationTemporality::Cumulative,
+                    is_monotonic: true,
+                }),
+                metadata: vec![],
+            }],
+        };
+        let out: Value = serde_json::from_slice(&encode(&EncodeOptions::default(), &b).unwrap()).unwrap();
+        assert_eq!(out["resourceMetrics"][0]["scopeMetrics"][0]["scope"]["name"], "");
     }
 }

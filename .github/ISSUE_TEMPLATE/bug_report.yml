@@ -1,0 +1,31 @@
+name: Bug report
+description: Tern does something wrong or crashes.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you expected, and what happened instead. Include error messages and log lines.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      description: The smallest config, and plugin if any, that shows the problem.
+      render: toml
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Tern version
+      description: Output of `tern --version`.
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: OS and architecture
+      placeholder: Ubuntu 24.04, x86_64

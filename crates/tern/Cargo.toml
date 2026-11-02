@@ -3,7 +3,14 @@ name = "tern"
 description = "A pluggable, standards-based metrics agent"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
+repository.workspace = true
+
+# The library and binary share a name; document only the library.
+[[bin]]
+name = "tern"
+doc = false
 
 [dependencies]
 anyhow = "1"
@@ -21,5 +28,10 @@ wasmtime-wasi = "50"
 workspace = true
 
 [dev-dependencies]
+divan = "0.1"
 insta = "1"
 proptest = "1"
+
+[[bench]]
+name = "encoding"
+harness = false

@@ -1,0 +1,17 @@
+# zizmor exemptions, all for release.yml, which `dist generate` (cargo-dist)
+# writes; hand edits would be overwritten. Re-check them when bumping
+# cargo-dist. Every other workflow gets the full audit.
+rules:
+  # Creating the GitHub release needs `contents: write`.
+  excessive-permissions:
+    ignore:
+      - release.yml
+  # The expanded values are `github.ref_name` (a tag, which only maintainers
+  # can push) and fields of dist's own build plan, never PR content.
+  template-injection:
+    ignore:
+      - release.yml
+  # `matrix.container.image` is null: no build containers are configured.
+  unpinned-images:
+    ignore:
+      - release.yml

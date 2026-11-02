@@ -49,14 +49,26 @@ Run `make setup` once after cloning. It installs the lint and test tools and
 enables a git pre-commit hook that runs `make lint`.
 
 ```sh
-make lint       # formatting, Clippy, doc warnings, cargo-deny, unused dependencies
+make lint       # formatting, Clippy, docs, cargo-deny, unused deps, lockfiles, workflows
 make fmt        # fix formatting
-make test       # unit, property, snapshot, and integration tests
+make test       # unit, property, snapshot, integration, and doc tests
 make coverage   # line coverage report in your browser
+make bench      # encoder benchmarks
+make fuzz       # fuzz the line protocol decoder
 ```
 
-Run `make lint` before every commit; the hook and CI both enforce it.
-[AGENTS.md](AGENTS.md) has the lint and test conventions.
+Run `make lint` before every commit; the hook and CI both enforce it. The
+Makefile header lists the other targets. [CONTRIBUTING.md](CONTRIBUTING.md)
+covers versioning, dependencies, and releases, and [AGENTS.md](AGENTS.md) has
+the lint and test conventions. Report vulnerabilities as described in
+[SECURITY.md](SECURITY.md).
+
+## Telemetry
+
+Tern sends nothing anywhere you did not configure. Its own metrics (see
+"Service telemetry" below) are served only on the endpoint you set, and
+panics are written to its log. There is no crash reporting service and no
+usage tracking.
 
 ## Layout
 

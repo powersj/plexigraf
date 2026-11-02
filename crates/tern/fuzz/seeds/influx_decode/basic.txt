@@ -1,0 +1,2 @@
+cpu,host=a,region=us usage=0.5,idle=99i 1761955200000000000
+mem free=12u,ok=t,msg="hi \"x\"" 

@@ -7,7 +7,28 @@ exclude = ["examples", "sdk/rust"]
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
+# Minimum supported Rust for the agent, set by wasmtime. CI checks it.
+rust-version = "1.97"
 license = "Apache-2.0"
+repository = "https://github.com/powersj/tern"
+
+[profile.release]
+# Smaller, faster binary at the cost of a slower release build. Panics still
+# unwind, so a panic in one pipeline task does not take down the agent.
+lto = "thin"
+codegen-units = 1
+strip = true
+
+# `cargo build --profile profiling` for samply or flamegraphs: release speed
+# with symbols.
+[profile.profiling]
+inherits = "release"
+strip = false
+debug = true
+
+# The profile that `dist` (cargo-dist) builds releases with.
+[profile.dist]
+inherits = "release"
 
 # Lint levels shared by every workspace crate (opted in with `[lints] workspace = true`).
 # The guest crates outside the workspace copy this table; keep them in sync.

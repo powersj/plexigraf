@@ -99,6 +99,9 @@ mod tests {
         assert_eq!(parse_duration("10s").unwrap(), Duration::from_secs(10));
         assert_eq!(parse_duration("1m30s").unwrap(), Duration::from_secs(90));
         assert_eq!(parse_duration("250ms").unwrap(), Duration::from_millis(250));
+        assert_eq!(parse_duration("1500ns").unwrap(), Duration::from_nanos(1500));
+        assert_eq!(parse_duration("20us").unwrap(), Duration::from_micros(20));
+        assert_eq!(parse_duration("20µs").unwrap(), Duration::from_micros(20));
         assert_eq!(parse_duration("1.5h").unwrap(), Duration::from_mins(90));
         assert!(parse_duration("10").is_err());
         assert!(parse_duration("10x").is_err());

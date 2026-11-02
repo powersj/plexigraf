@@ -1,0 +1,72 @@
+pub mod tern_sdk
+pub use tern_sdk::PluginError
+pub mod tern_sdk::encoding
+pub fn tern_sdk::encoding::decode(&str, &str, &[u8]) -> core::result::Result<tern_sdk::Batch, alloc::string::String>
+pub fn tern_sdk::encoding::encode(&str, &str, &tern_sdk::Batch) -> core::result::Result<alloc::vec::Vec<u8>, alloc::string::String>
+pub mod tern_sdk::host
+pub fn tern_sdk::host::secret(&str) -> core::option::Option<alloc::string::String>
+pub fn tern_sdk::host::state_load() -> core::option::Option<alloc::vec::Vec<u8>>
+pub fn tern_sdk::host::state_save(&[u8])
+pub mod tern_sdk::log
+pub fn tern_sdk::log::debug(&str, &[(&str, &str)])
+pub fn tern_sdk::log::error(&str, &[(&str, &str)])
+pub fn tern_sdk::log::info(&str, &[(&str, &str)])
+pub fn tern_sdk::log::warn(&str, &[(&str, &str)])
+pub mod tern_sdk::raw
+pub macro tern_sdk::export_processor!
+pub struct tern_sdk::Batch(_)
+impl tern_sdk::Batch
+pub fn tern_sdk::Batch::add_resource(&mut self, raw::Resource) -> u32
+pub fn tern_sdk::Batch::add_scope(&mut self, raw::InstrumentationScope) -> u32
+pub fn tern_sdk::Batch::as_raw(&self) -> &raw::Batch
+pub fn tern_sdk::Batch::extend(&mut self, impl core::iter::traits::collect::IntoIterator<Item = raw::Metric>)
+pub fn tern_sdk::Batch::get(&self, usize) -> core::option::Option<raw::Metric>
+pub fn tern_sdk::Batch::is_empty(&self) -> bool
+pub fn tern_sdk::Batch::iter(&self) -> impl core::iter::traits::iterator::Iterator<Item = raw::Metric> + '_
+pub fn tern_sdk::Batch::len(&self) -> usize
+pub fn tern_sdk::Batch::new() -> tern_sdk::Batch
+pub fn tern_sdk::Batch::push(&mut self, impl core::convert::Into<raw::Metric>)
+pub fn tern_sdk::Batch::resource(&self, u32) -> raw::Resource
+pub fn tern_sdk::Batch::retain(&mut self, impl core::ops::function::FnMut(&raw::Metric) -> bool)
+pub fn tern_sdk::Batch::scope(&self, u32) -> raw::InstrumentationScope
+pub fn tern_sdk::Batch::set(&mut self, usize, raw::Metric)
+pub fn tern_sdk::Batch::take_all(&mut self) -> alloc::vec::Vec<raw::Metric>
+pub struct tern_sdk::Metric
+impl tern_sdk::Metric
+pub fn tern_sdk::Metric::counter(impl core::convert::Into<alloc::string::String>, impl core::convert::Into<alloc::string::String>) -> tern_sdk::Metric
+pub fn tern_sdk::Metric::description(self, impl core::convert::Into<alloc::string::String>) -> tern_sdk::Metric
+pub fn tern_sdk::Metric::gauge(impl core::convert::Into<alloc::string::String>, impl core::convert::Into<alloc::string::String>) -> tern_sdk::Metric
+pub fn tern_sdk::Metric::point(self, tern_sdk::Timestamp, impl core::convert::Into<Number>, &[(&str, &str)]) -> tern_sdk::Metric
+pub fn tern_sdk::Metric::point_with(self, tern_sdk::Timestamp, impl core::convert::Into<Number>, alloc::vec::Vec<KeyValue>) -> tern_sdk::Metric
+pub fn tern_sdk::Metric::start_time(self, tern_sdk::Timestamp) -> tern_sdk::Metric
+pub fn tern_sdk::Metric::up_down(impl core::convert::Into<alloc::string::String>, impl core::convert::Into<alloc::string::String>) -> tern_sdk::Metric
+impl core::clone::Clone for tern_sdk::Metric
+pub fn tern_sdk::Metric::clone(&self) -> Self
+pub struct tern_sdk::Timestamp(pub u64)
+impl tern_sdk::Timestamp
+pub fn tern_sdk::Timestamp::unix_nano(self) -> u64
+impl core::clone::Clone for tern_sdk::Timestamp
+pub fn tern_sdk::Timestamp::clone(&self) -> Self
+impl core::cmp::Eq for tern_sdk::Timestamp
+impl core::cmp::Ord for tern_sdk::Timestamp
+pub fn tern_sdk::Timestamp::cmp(&self, &Self) -> core::cmp::Ordering
+impl core::cmp::PartialEq for tern_sdk::Timestamp
+pub fn tern_sdk::Timestamp::eq(&self, &Self) -> bool
+impl core::cmp::PartialOrd for tern_sdk::Timestamp
+pub fn tern_sdk::Timestamp::partial_cmp(&self, &Self) -> core::option::Option<core::cmp::Ordering>
+impl core::fmt::Debug for tern_sdk::Timestamp
+pub fn tern_sdk::Timestamp::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for tern_sdk::Timestamp
+impl core::marker::StructuralPartialEq for tern_sdk::Timestamp
+pub trait tern_sdk::Processor: serde_core::de::DeserializeOwned + core::marker::Sized + 'static
+pub fn tern_sdk::Processor::flush(&mut self, tern_sdk::Timestamp) -> core::result::Result<tern_sdk::Batch, PluginError>
+pub fn tern_sdk::Processor::process(&mut self, tern_sdk::Batch) -> core::result::Result<tern_sdk::Batch, PluginError>
+pub fn tern_sdk::Processor::shutdown(&mut self)
+pub fn tern_sdk::Processor::start(Self) -> core::result::Result<Self, PluginError>
+pub fn tern_sdk::Processor::validate(&self) -> core::result::Result<(), PluginError>
+pub trait tern_sdk::Scraper: serde_core::de::DeserializeOwned + core::marker::Sized + 'static
+pub fn tern_sdk::Scraper::scrape(&mut self, tern_sdk::Timestamp) -> core::result::Result<tern_sdk::Batch, PluginError>
+pub fn tern_sdk::Scraper::shutdown(&mut self)
+pub fn tern_sdk::Scraper::start(Self) -> core::result::Result<Self, PluginError>
+pub fn tern_sdk::Scraper::validate(&self) -> core::result::Result<(), PluginError>
+pub fn tern_sdk::attr(impl core::convert::Into<alloc::string::String>, impl core::convert::Into<raw::AnyValue>) -> raw::KeyValue

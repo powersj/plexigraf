@@ -1,0 +1,38 @@
+[package]
+name = "tern-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+# Mirrors [workspace.lints] in the root Cargo.toml; keep the two in sync.
+[lints.rust]
+missing_docs = "warn"
+unsafe_code = "forbid"
+unused_qualifications = "warn"
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+items_after_statements = "allow"
+too_many_lines = "allow"
+
+[lints.rustdoc]
+broken_intra_doc_links = "deny"
+
+[dependencies]
+libfuzzer-sys = "0.4"
+
+[dependencies.tern]
+path = ".."
+
+[[bin]]
+name = "influx_decode"
+path = "fuzz_targets/influx_decode.rs"
+test = false
+doc = false
+bench = false
+
+# A standalone workspace: fuzzing builds on nightly with its own lockfile.
+[workspace]

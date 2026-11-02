@@ -1,0 +1,7 @@
+# The toolchain for local builds and CI, so both compile with the same Rust.
+# Bump it on the cadence in CONTRIBUTING.md. MSRVs are separate: see
+# `rust-version` in each Cargo.toml.
+[toolchain]
+channel = "1.99.1"
+components = ["clippy", "rustfmt", "llvm-tools-preview"]
+targets = ["wasm32-wasip2"]

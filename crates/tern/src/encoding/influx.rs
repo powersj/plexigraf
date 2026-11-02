@@ -199,7 +199,12 @@ fn regroup(lines: Vec<Line>) -> Vec<Line> {
             continue;
         };
         let key = (prefix.to_string(), line.tags.clone(), line.time);
-        let value = line.fields.into_iter().next().unwrap().1;
+        let value = line
+            .fields
+            .into_iter()
+            .next()
+            .expect("`single` means exactly one field")
+            .1;
         match index.get(&key) {
             Some(&i) if !out[i].fields.iter().any(|(f, _)| f == field) => {
                 out[i].fields.push((field.to_string(), value));
@@ -728,5 +733,33 @@ mod tests {
             prop_assert_eq!(&p.attributes[0].key, &tag_key);
             prop_assert_eq!(any_value_to_string(&p.attributes[0].value), tag_value);
         }
+    }
+
+    #[test]
+    fn decodes_booleans_as_zero_and_one() {
+        let b = decode(&DecodeOptions::default(), b"svc up=t,ok=TRUE,down=f,bad=FALSE 1", 0).unwrap();
+        let values: Vec<_> = b
+            .metrics
+            .iter()
+            .map(|m| match &m.data {
+                Data::Gauge(g) => match g.data_points[0].value {
+                    Number::Int(i) => (m.name.as_str(), i),
+                    Number::Double(_) => panic!("{} decoded as a double", m.name),
+                },
+                _ => panic!("{} is not a gauge", m.name),
+            })
+            .collect();
+        assert_eq!(values, [("svc.up", 1), ("svc.ok", 1), ("svc.down", 0), ("svc.bad", 0)]);
+    }
+
+    #[test]
+    fn drops_non_finite_values() {
+        // Line protocol has no NaN or infinity, so those points are left out.
+        let b = batch(vec![
+            gauge("a", Number::Double(f64::NAN), vec![], T),
+            gauge("b", Number::Double(f64::INFINITY), vec![], T),
+            gauge("c", Number::Double(1.5), vec![], T),
+        ]);
+        assert_eq!(text(&EncodeOptions::default(), &b), "c value=1.5 1761955200000000000\n");
     }
 }

@@ -4,7 +4,7 @@
 //! `processor`, or `exporter`), implement the matching trait on your config
 //! struct, and call the export macro:
 //!
-//! ```ignore
+//! ```
 //! use serde::Deserialize;
 //! use tern_sdk::{export_scraper, Batch, Metric, PluginError, Scraper, Timestamp};
 //!

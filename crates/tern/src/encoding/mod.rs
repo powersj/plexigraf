@@ -80,3 +80,76 @@ impl EncodingConfig {
         encode(&self.format, &self.options, batch)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::bindings::metrics::Data;
+
+    const LINE: &[u8] = b"cpu,host=a usage=0.5 1761955200000000000\n";
+
+    #[test]
+    fn dispatches_by_format() {
+        let batch = decode("influx", &toml::Table::new(), LINE).unwrap();
+        assert_eq!(batch.metrics.len(), 1);
+        assert_eq!(batch.metrics[0].name, "cpu.usage");
+
+        let influx = encode("influx", &toml::Table::new(), &batch).unwrap();
+        assert!(
+            String::from_utf8(influx)
+                .unwrap()
+                .starts_with("cpu.usage,host=a value=0.5 ")
+        );
+        let json: serde_json::Value =
+            serde_json::from_slice(&encode("json", &toml::Table::new(), &batch).unwrap()).unwrap();
+        assert!(json.get("resourceMetrics").is_some(), "{json}");
+    }
+
+    #[test]
+    fn rejects_unknown_and_unimplemented_formats() {
+        let empty = BatchData::default();
+        for format in ["otlp", "prometheus"] {
+            assert!(
+                encode(format, &toml::Table::new(), &empty)
+                    .unwrap_err()
+                    .contains("not implemented")
+            );
+        }
+        for format in ["json", "otlp", "prometheus"] {
+            assert!(
+                decode(format, &toml::Table::new(), LINE)
+                    .unwrap_err()
+                    .contains("not implemented")
+            );
+        }
+        assert!(
+            encode("csv", &toml::Table::new(), &empty)
+                .unwrap_err()
+                .contains("unknown encoding")
+        );
+        assert!(
+            decode("csv", &toml::Table::new(), LINE)
+                .unwrap_err()
+                .contains("unknown encoding")
+        );
+    }
+
+    #[test]
+    fn passes_options_through() {
+        let options = parse_options("multi_field_lines = true").unwrap();
+        let batch = decode("influx", &toml::Table::new(), b"cpu usage=0.5,idle=99i 1\n").unwrap();
+        let out = String::from_utf8(encode("influx", &options, &batch).unwrap()).unwrap();
+        assert_eq!(out.lines().count(), 1, "{out}");
+        assert!(parse_options("not toml").is_err());
+        assert!(encode("influx", &parse_options("bogus = 1").unwrap(), &batch).is_err());
+    }
+
+    #[test]
+    fn missing_timestamps_default_to_now() {
+        let batch = decode("influx", &toml::Table::new(), b"cpu usage=0.5\n").unwrap();
+        let Data::Gauge(g) = &batch.metrics[0].data else {
+            panic!("expected a gauge")
+        };
+        assert!(g.data_points[0].time_unix_nano > 1_700_000_000_000_000_000);
+    }
+}

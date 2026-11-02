@@ -773,7 +773,7 @@ impl Actor {
         }
         let ticks = self.deadline_ticks();
         let scope = (self.plugin.scope_name(), self.plugin.version.clone());
-        let live = self.live.as_mut().expect("ensure_live");
+        let live = self.live.as_mut().expect("handle runs only after ensure_live succeeds");
         live.store.set_epoch_deadline(ticks);
         let store = &mut live.store;
         let done = match (req, &live.bound) {
